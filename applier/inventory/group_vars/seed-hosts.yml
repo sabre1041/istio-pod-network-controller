@@ -1,5 +1,7 @@
 ---
 
+istio_pod_network_controller_namespace: "istio-pod-network-controller"
+
 openshift_cluster_content:
   - object: projectrequest
     content:
@@ -20,9 +22,12 @@ openshift_cluster_content:
       - name: "Create ImageStream"
         template: "{{ inventory_dir }}/../templates/imagestream-rhel.yml"
         params: "{{ inventory_dir }}/../params/imagestream-rhel"
+        namespace: "{{ istio_pod_network_controller_namespace }}"
       - name: "Create Build"
         template: "{{ inventory_dir }}/../templates/istio-pod-network-controller-build.yml"
         params: "{{ inventory_dir }}/../params/istio-pod-network-controller-build"
+        namespace: "{{ istio_pod_network_controller_namespace }}"
       - name: "Create DaemonSet"
         template: "{{ inventory_dir }}/../templates/istio-pod-network-controller-daemonset.yml"
         params: "{{ inventory_dir }}/../params/istio-pod-network-controller-daemonset"
+        namespace: "{{ istio_pod_network_controller_namespace }}"
