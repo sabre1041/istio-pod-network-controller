@@ -31,7 +31,7 @@ objects:
         any SELinux context.  WARNING: this is the most relaxed SCC and should be
         used only for cluster administration. Grant with caution.'
     creationTimestamp: null
-    name: privileged
+    name: ${NAME}
   priority: ${{SCC_PRIORITY_LEVEL}}
   readOnlyRootFilesystem: false
   requiredDropCapabilities: null
