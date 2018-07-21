@@ -3,9 +3,11 @@ package stub
 import (
 	"context"
 
+	"fmt"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"os/exec"
 )
 
 func NewHandler(nodeName string) sdk.Handler {
@@ -36,22 +38,23 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 
 func managePod(pod *corev1.Pod) error {
 	logrus.Infof("Processing Pod: %s", pod.ObjectMeta.Name)
-	out, err := exec.Command("docker ps | grep " + pod.ObjectMeta.podID + " | grep k8s_POD | awk '{print $1}'").Output()
+	cmd := "docker ps | grep " + string(pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
+	out, err := exec.Command(cmd).Output()
 	if err != nil {
 		logrus.Errorf("Failed to get containerID : %v", err)
-		return
+		return err
 	}
-	containerID := out.String()
-	out, err := exec.Command("docker inspect --format {{.State.Pid}} " + containerID).Output()
+	containerID := fmt.Sprintf("%s", out)
+	out, err = exec.Command("docker inspect --format {{.State.Pid}} " + containerID).Output()
 	if err != nil {
 		logrus.Errorf("Failed to get pidID : %v", err)
-		return
+		return err
 	}
-	pidID := out.String()
-	out, err := exec.Command("nsenter -t " + pidID + " -n /usr/local/bin/istio-iptables.sh $ISTIO_PARAMS").Output()
+	pidID := fmt.Sprintf("%s", out)
+	out, err = exec.Command("nsenter -t " + pidID + " -n /usr/local/bin/istio-iptables.sh $ISTIO_PARAMS").Output()
 	if err != nil {
-		logrus.Errorf("Failed to get pidID : %v", err)
-		return
+		logrus.Errorf("Failed to setup ip tables : %v", err)
+		return err
 	}
 	return nil
 }
