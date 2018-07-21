@@ -38,7 +38,21 @@ objects:
           name: ${NAME}
           securityContext:
             privileged: true
+          volumeMounts:
+          - name: proc
+            mountPath: /proc
+          - name: docker
+            mountPath: /var/run/docker.sock            
         serviceAccountName: ${SERVICE_ACCOUNT}
+        volumes:
+        - name: docker
+          hostPath: 
+            path: /var/run/docker.sock
+            type: Socket
+        - name: proc
+          hostPath: 
+            path: /proc
+            type: Directory               
     updateStrategy:
       rollingUpdate:
         minReadySeconds: 600

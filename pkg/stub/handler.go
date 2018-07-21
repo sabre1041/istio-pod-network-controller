@@ -36,6 +36,22 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 
 func managePod(pod *corev1.Pod) error {
 	logrus.Infof("Processing Pod: %s", pod.ObjectMeta.Name)
-
+	out, err := exec.Command("docker ps | grep " + pod.ObjectMeta.podID + " | grep k8s_POD | awk '{print $1}'").Output()
+	if err != nil {
+		logrus.Errorf("Failed to get containerID : %v", err)
+		return
+	}
+	containerID := out.String()
+	out, err := exec.Command("docker inspect --format {{.State.Pid}} " + containerID).Output()
+	if err != nil {
+		logrus.Errorf("Failed to get pidID : %v", err)
+		return
+	}
+	pidID := out.String()
+	out, err := exec.Command("nsenter -t " + pidID + " -n istio-iptables.sh <params>").Output()
+	if err != nil {
+		logrus.Errorf("Failed to get pidID : %v", err)
+		return
+	}
 	return nil
 }
