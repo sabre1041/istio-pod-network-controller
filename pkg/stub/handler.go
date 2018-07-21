@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"os/exec"
+	"sort"
 )
 
 func NewHandler(nodeName string) sdk.Handler {
@@ -24,16 +25,42 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 
 		// Check to see if pod is running on current node
 		if h.nodeName == o.Spec.NodeName {
-
-			err := managePod(o)
-			if err != nil {
-				logrus.Errorf("Failed to process pod : %v", err)
-				return err
+			if filterPod(o) {
+				err := managePod(o)
+				if err != nil {
+					logrus.Errorf("Failed to process pod : %v", err)
+					return err
+				}
 			}
 		}
-
 	}
 	return nil
+}
+
+func filterPod(pod *corev1.Pod) bool {
+	// filter by state
+	if pod.Status.Phase != "Running" && pod.Status.Phase != "Pending" {
+		logrus.Infof("Pod %s terminated, ignoring", pod.ObjectMeta.Name)
+		return false
+	}
+	// filter by whether the pod belongs to the mesh
+	// not sure how to do it right now.
+
+	//filter by opted in namespaces
+	namespaces := []string{"tutorial"}
+	sort.Strings(namespaces)
+	i := sort.SearchStrings(namespaces, pod.ObjectMeta.Namespace)
+	if !(i < len(namespaces) && namespaces[i] == pod.ObjectMeta.Namespace) {
+		logrus.Infof("Pod %s not in considered namespaces, ignoring", pod.ObjectMeta.Name)
+		return false
+	}
+
+	// filter by being already initialized
+	if "true" == pod.ObjectMeta.Annotations["initializer.istio.io/status"] {
+		logrus.Infof("Pod %s previously initialized, ignoring", pod.ObjectMeta.Name)
+		return false
+	}
+	return true
 }
 
 func managePod(pod *corev1.Pod) error {
@@ -58,6 +85,9 @@ func managePod(pod *corev1.Pod) error {
 		logrus.Errorf("Failed to setup ip tables : %v", err)
 		return err
 	}
-	logrus.Infof("ip tables update with no error")
-	return nil
+	logrus.Infof("ip tables updated with no error")
+	updatedPod := pod.DeepCopy()
+	updatedPod.ObjectMeta.Annotations["initializer.istio.io/status"] = "true"
+	err = sdk.Update(updatedPod)
+	return err
 }
