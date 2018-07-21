@@ -45,16 +45,19 @@ func managePod(pod *corev1.Pod) error {
 		return err
 	}
 	containerID := fmt.Sprintf("%s", out)
+	logrus.Infof("ose_pod container id: %s", containerID)
 	out, err = exec.Command("docker inspect --format {{.State.Pid}} " + containerID).Output()
 	if err != nil {
 		logrus.Errorf("Failed to get pidID : %v", err)
 		return err
 	}
 	pidID := fmt.Sprintf("%s", out)
+	logrus.Infof("ose_pod container main process id: %s", pidID)
 	out, err = exec.Command("nsenter -t " + pidID + " -n /usr/local/bin/istio-iptables.sh $ISTIO_PARAMS").Output()
 	if err != nil {
 		logrus.Errorf("Failed to setup ip tables : %v", err)
 		return err
 	}
+	logrus.Infof("ip tables update with no error")
 	return nil
 }

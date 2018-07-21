@@ -34,7 +34,8 @@ objects:
               fieldRef:
                 fieldPath: spec.nodeName
           - name: ISTIO_PARAMS
-            value: '-p 15001 -u 1337 -m REDIRECT -i "'"*"'" -x -b 8778, 9779, -d'    
+            value: >
+              -p 15001 -u 1337 -m REDIRECT -i '*' -x -b 8778, 9779 -d    
           image: ${IMAGE}
           imagePullPolicy: Always
           name: ${NAME}
