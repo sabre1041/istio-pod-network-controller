@@ -15,12 +15,13 @@ ADD . /opt/app-root/go/src/github.com/sabre1041/istio-pod-network-controller
 RUN yum repolist > /dev/null && \
     yum-config-manager --enable rhel-7-server-optional-rpms && \
     yum clean all && \
-    INSTALL_PKGS="golang" && \
+    INSTALL_PKGS="golang iptables iproute" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
     yum clean all && \
     mkdir -p ${GOPATH}/{bin,src} && \
     cd /opt/app-root/go/src/github.com/sabre1041/istio-pod-network-controller && \
+    cp bin/istio-iptables.sh /usr/local/bin/ && \
     go build -v -o bin/main cmd/istio-pod-network-controller/main.go && \
     mv bin/main ${GOBIN}
 
