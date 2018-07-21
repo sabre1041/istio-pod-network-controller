@@ -48,7 +48,7 @@ func managePod(pod *corev1.Pod) error {
 		return
 	}
 	pidID := out.String()
-	out, err := exec.Command("nsenter -t " + pidID + " -n istio-iptables.sh <params>").Output()
+	out, err := exec.Command("nsenter -t " + pidID + " -n /usr/local/bin/istio-iptables.sh $ISTIO_PARAMS").Output()
 	if err != nil {
 		logrus.Errorf("Failed to get pidID : %v", err)
 		return
