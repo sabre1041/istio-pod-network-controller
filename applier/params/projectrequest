@@ -1,0 +1,3 @@
+NAME=istio-pod-network-controller
+DISPLAY_NAME=Istio Pod Network Controller
+DESCRIPTION=Project to Istio Pod Network

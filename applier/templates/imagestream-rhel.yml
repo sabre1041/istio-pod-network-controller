@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: ${IMAGESTREAM_NAME}
+objects:
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: ${IMAGESTREAM_NAME}
+  spec:
+    dockerImageRepository: ${DOCKER_IMAGE_REPOSITORY}
+parameters:
+- description: The name of the ImageStraem
+  displayName: ImageStream Name
+  name: IMAGESTREAM_NAME
+  value: rhel7
+  required: true
+- description: The name of the Upstream ImageStraem
+  displayName: Upstream ImageStream Name
+  name: DOCKER_IMAGE_REPOSITORY
+  value: registry.access.redhat.com/rhel7/rhel
+  required: true 

@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: serviceaccount-privileged-scc
+  annotations:
+    openshift.io/display-name: Custom Priviledged SCC
+    description: Template to create a specialized Priviledged SCC with a Service Account
+objects:
+- allowHostDirVolumePlugin: true
+  allowHostIPC: true
+  allowHostNetwork: true
+  allowHostPID: true
+  allowHostPorts: true
+  allowPrivilegedContainer: true
+  allowedCapabilities:
+  - '*'
+  allowedFlexVolumes: null
+  apiVersion: v1
+  defaultAddCapabilities: null
+  fsGroup:
+    type: RunAsAny
+  groups:
+  - system:cluster-admins
+  - system:nodes
+  - system:masters
+  kind: SecurityContextConstraints
+  metadata:
+    annotations:
+      kubernetes.io/description: 'privileged allows access to all privileged and host
+        features and the ability to run as any user, any group, any fsGroup, and with
+        any SELinux context.  WARNING: this is the most relaxed SCC and should be
+        used only for cluster administration. Grant with caution.'
+    creationTimestamp: null
+    name: privileged
+  priority: ${{SCC_PRIORITY_LEVEL}}
+  readOnlyRootFilesystem: false
+  requiredDropCapabilities: null
+  runAsUser:
+    type: RunAsAny
+  seLinuxContext:
+    type: RunAsAny
+  seccompProfiles:
+  - '*'
+  supplementalGroups:
+    type: RunAsAny
+  users:
+  - system:admin
+  - system:serviceaccount:openshift-infra:build-controller
+  - system:serviceaccount:management-infra:management-admin
+  - system:serviceaccount:management-infra:inspector-admin
+  - system:serviceaccount:${SERVICE_ACCOUNT_NAMESPACE}:${SERVICE_ACCOUNT_NAME}
+  volumes:
+  - '*'
+parameters:
+- name: NAME
+  displayName: SCC Name
+  description: Name of the SCC
+  value: privileged-custom-sa
+  required: true
+- name: SERVICE_ACCOUNT_NAME
+  displayName: Service Account Name
+  description: Name of the Service Account
+  required: true
+- name: SERVICE_ACCOUNT_NAMESPACE
+  displayName: Service Account Namespace
+  description: Namespace of the Service Account
+  required: true
+- name: SCC_PRIORITY_LEVEL
+  displayName: SCC Priority
+  description: Priority Level for the SCC
+  value: "8"
+  required: true

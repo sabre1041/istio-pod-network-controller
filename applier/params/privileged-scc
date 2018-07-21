@@ -1,0 +1,2 @@
+SERVICE_ACCOUNT_NAME=istio-pod-network-controller
+SERVICE_ACCOUNT_NAMESPACE=istio-pod-network-controller
