@@ -65,22 +65,22 @@ func filterPod(pod *corev1.Pod) bool {
 
 func managePod(pod *corev1.Pod) error {
 	logrus.Infof("Processing Pod: %s , id %s", pod.ObjectMeta.Name, pod.ObjectMeta.UID)
-	cmd := "-c docker ps | grep " + string(pod.ObjectMeta.UID)
+	//	cmd := "-c docker ps | grep " + string(pod.ObjectMeta.UID)
+	//	out, err := exec.Command("/bin/bash", cmd).Output()
+	//	if err != nil {
+	//		logrus.Errorf("Failed to get containerID : %v", err)
+	//		return err
+	//	}
+	//	logrus.Infof("output command 1: %s", out)
+	//	cmd = "-c docker ps | grep " + string(pod.ObjectMeta.UID) + " | grep k8s_POD "
+	//	out, err = exec.Command("/bin/bash", cmd).Output()
+	//	if err != nil {
+	//		logrus.Errorf("Failed to get containerID : %v", err)
+	//		return err
+	//	}
+	//	logrus.Infof("output command 2: %s", out)
+	cmd := "-c docker ps | grep " + fmt.Sprintf("%s", pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
 	out, err := exec.Command("/bin/bash", cmd).Output()
-	if err != nil {
-		logrus.Errorf("Failed to get containerID : %v", err)
-		return err
-	}
-	logrus.Infof("output command 1: %s", out)
-	cmd = "-c docker ps | grep " + string(pod.ObjectMeta.UID) + " | grep k8s_POD "
-	out, err = exec.Command("/bin/bash", cmd).Output()
-	if err != nil {
-		logrus.Errorf("Failed to get containerID : %v", err)
-		return err
-	}
-	logrus.Infof("output command 2: %s", out)
-	cmd = "-c docker ps | grep " + string(pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
-	out, err = exec.Command("/bin/bash", cmd).Output()
 	if err != nil {
 		logrus.Errorf("Failed to get containerID : %v", err)
 		return err
