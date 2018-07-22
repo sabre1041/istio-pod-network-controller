@@ -81,28 +81,30 @@ func managePod(pod *corev1.Pod) error {
 	//	logrus.Infof("output command 2: %s", out)
 	//cmd := "-c docker ps | grep " + fmt.Sprintf("%s", pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
 	//out, err := exec.Command("/bin/bash", cmd).Output()
-	out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", pod.ObjectMeta.Name, "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").CombinedOutput()
+
+	out, err := exec.Command("docker", "ps", "--filter", "label=io.kubernetes.container.name=POD", "--filter", "label=io.kubernetes.pod.name="+pod.ObjectMeta.Name, "-q").CombinedOutput()
+	//out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", pod.ObjectMeta.Name, "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").CombinedOutput()
 	if err != nil {
 		logrus.Errorf("Failed to get containerID : %v", err)
 		return err
 	}
 	containerID := fmt.Sprintf("%s", out)
 	logrus.Infof("ose_pod container id: %s", containerID)
-	out, err = exec.Command("/bin/bash", "-c", "docker", "inspect", "--format", "{{.State.Pid}}", containerID).CombinedOutput()
+	out, err = exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerID).CombinedOutput()
 	if err != nil {
 		logrus.Errorf("Failed to get pidID : %v", err)
 		return err
 	}
 	pidID := fmt.Sprintf("%s", out)
 	logrus.Infof("ose_pod container main process id: %s", pidID)
-	out, err = exec.Command("/bin/bash", "-c", "nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
-	if err != nil {
-		logrus.Errorf("Failed to setup ip tables : %v", err)
-		return err
-	}
-	logrus.Infof("ip tables updated with no error")
-	updatedPod := pod.DeepCopy()
-	updatedPod.ObjectMeta.Annotations["initializer.istio.io/status"] = "true"
-	err = sdk.Update(updatedPod)
+	//	out, err = exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
+	//	if err != nil {
+	//		logrus.Errorf("Failed to setup ip tables : %v", err)
+	//		return err
+	//	}
+	//	logrus.Infof("ip tables updated with no error")
+	//	updatedPod := pod.DeepCopy()
+	//	updatedPod.ObjectMeta.Annotations["initializer.istio.io/status"] = "true"
+	//	err = sdk.Update(updatedPod)
 	return err
 }

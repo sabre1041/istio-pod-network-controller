@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"os/exec"
 	"runtime"
 
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
@@ -19,6 +20,8 @@ func printVersion() {
 }
 
 func main() {
+	//out, _ := exec.Command("docker", "ps").CombinedOutput()
+	//logrus.Infof("%s", out)
 	printVersion()
 
 	nodeName := os.Getenv("NODE_NAME")
