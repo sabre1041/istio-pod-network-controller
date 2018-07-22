@@ -10,6 +10,10 @@
   name = "k8s.io/client-go"
   version = "kubernetes-1.9.3"
 
+[[override]]
+  version = "v1.13.1"
+  name = "github.com/docker/docker"
+
 [[constraint]]
   name = "github.com/operator-framework/operator-sdk"
   # The version rule is used for a specific release and the master branch for in between releases.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/docker/docker/client"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	stub "github.com/sabre1041/istio-pod-network-controller/pkg/stub"
@@ -28,8 +29,13 @@ func main() {
 		return
 	}
 
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		panic(err)
+	}
+
 	logrus.Infof("Managing Pods Running on Node: %s", nodeName)
 	sdk.Watch("v1", "Pod", "", 0)
-	sdk.Handle(stub.NewHandler(nodeName))
+	sdk.Handle(stub.NewHandler(nodeName, *cli))
 	sdk.Run(context.TODO())
 }
