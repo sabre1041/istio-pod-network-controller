@@ -79,8 +79,9 @@ func managePod(pod *corev1.Pod) error {
 	//		return err
 	//	}
 	//	logrus.Infof("output command 2: %s", out)
-	cmd := "-c docker ps | grep " + fmt.Sprintf("%s", pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
-	out, err := exec.Command("/bin/bash", cmd).Output()
+	//cmd := "-c docker ps | grep " + fmt.Sprintf("%s", pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
+	//out, err := exec.Command("/bin/bash", cmd).Output()
+	out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", string(pod.ObjectMeta.UID), "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").Output()
 	if err != nil {
 		logrus.Errorf("Failed to get containerID : %v", err)
 		return err
