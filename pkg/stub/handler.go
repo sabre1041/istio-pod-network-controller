@@ -65,22 +65,22 @@ func filterPod(pod *corev1.Pod) bool {
 
 func managePod(pod *corev1.Pod) error {
 	logrus.Infof("Processing Pod: %s", pod.ObjectMeta.Name)
-	cmd := "docker ps | grep " + string(pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
-	out, err := exec.Command(cmd).Output()
+	cmd := "-c docker ps | grep " + string(pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
+	out, err := exec.Command("/bin/bash", cmd).Output()
 	if err != nil {
 		logrus.Errorf("Failed to get containerID : %v", err)
 		return err
 	}
 	containerID := fmt.Sprintf("%s", out)
 	logrus.Infof("ose_pod container id: %s", containerID)
-	out, err = exec.Command("docker inspect --format {{.State.Pid}} " + containerID).Output()
+	out, err = exec.Command("/bin/bash", "-c docker inspect --format {{.State.Pid}} "+containerID).Output()
 	if err != nil {
 		logrus.Errorf("Failed to get pidID : %v", err)
 		return err
 	}
 	pidID := fmt.Sprintf("%s", out)
 	logrus.Infof("ose_pod container main process id: %s", pidID)
-	out, err = exec.Command("nsenter -t " + pidID + " -n /usr/local/bin/istio-iptables.sh $ISTIO_PARAMS").Output()
+	out, err = exec.Command("/bin/bash", "-c nsenter -t "+pidID+" -n /usr/local/bin/istio-iptables.sh $ISTIO_PARAMS").Output()
 	if err != nil {
 		logrus.Errorf("Failed to setup ip tables : %v", err)
 		return err
