@@ -40,3 +40,23 @@ Deployment
 ansible-playbook -i ./inventory galaxy/openshift-applier/playbooks/openshift-cluster-seed.yml
 ```
 
+## Building
+
+To build the code install `dep`:
+```
+curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+```
+
+initialize the dependecies:
+```
+dep ensure -vendor-only
+```
+then build the code:
+```
+go build -v -o bin/main cmd/istio-pod-network-controller/main.go
+```
+
+
+
+
+
