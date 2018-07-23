@@ -38,10 +38,17 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 					logrus.Errorf("Failed to process pod : %v", err)
 					return err
 				}
+				markPodAsInitialized(o)
 			}
 		}
 	}
 	return nil
+}
+
+func markPodAsInitialized(pod *corev1.Pod) {
+	updatedPod := pod.DeepCopy()
+	updatedPod.ObjectMeta.Annotations["pod-network-controller.istio.io/status"] = "initialized"
+	err = sdk.Update(updatedPod)
 }
 
 func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
@@ -71,7 +78,7 @@ func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
 		}
 
 		logrus.Infof("Pod Namespace: %s - Pod Name: %s - Container PID: %d", podName, podNamespace, inspect.State.Pid)
-		return fmt.Sprintf("%s", inspect.State.Pid), nil
+		return fmt.Sprintf("%d", inspect.State.Pid), nil
 	}
 	return "", errors.New("unable to find pod main pid")
 }
@@ -95,7 +102,7 @@ func filterPod(pod *corev1.Pod) bool {
 	}
 
 	// filter by being already initialized
-	if "true" == pod.ObjectMeta.Annotations["initializer.istio.io/status"] {
+	if "initialized" == pod.ObjectMeta.Annotations["pod-network-controller.istio.io/status"] {
 		logrus.Infof("Pod %s previously initialized, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
@@ -104,50 +111,17 @@ func filterPod(pod *corev1.Pod) bool {
 
 func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 	logrus.Infof("Processing Pod: %s , id %s", pod.ObjectMeta.Name, pod.ObjectMeta.UID)
-	//	cmd := "-c docker ps | grep " + string(pod.ObjectMeta.UID)
-	//	out, err := exec.Command("/bin/bash", cmd).Output()
-	//	if err != nil {
-	//		logrus.Errorf("Failed to get containerID : %v", err)
-	//		return err
-	//	}
-	//	logrus.Infof("output command 1: %s", out)
-	//	cmd = "-c docker ps | grep " + string(pod.ObjectMeta.UID) + " | grep k8s_POD "
-	//	out, err = exec.Command("/bin/bash", cmd).Output()
-	//	if err != nil {
-	//		logrus.Errorf("Failed to get containerID : %v", err)
-	//		return err
-	//	}
-	//	logrus.Infof("output command 2: %s", out)
-	//cmd := "-c docker ps | grep " + fmt.Sprintf("%s", pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
-	//out, err := exec.Command("/bin/bash", cmd).Output()
-
-	//	out, err := exec.Command("docker", "ps", "--filter", "label=io.kubernetes.container.name=POD", "--filter", "label=io.kubernetes.pod.name="+pod.ObjectMeta.Name, "-q").CombinedOutput()
-	//	//out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", pod.ObjectMeta.Name, "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").CombinedOutput()
-	//	if err != nil {
-	//		logrus.Errorf("Failed to get containerID : %v", err)
-	//		return err
-	//	}
-	//	containerID := fmt.Sprintf("%s", out)
-	//	logrus.Infof("ose_pod container id: %s", containerID)
-	//	out, err = exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerID).CombinedOutput()
-	//	if err != nil {
-	//		logrus.Errorf("Failed to get pidID : %v", err)
-	//		return err
-	//	}
 	pidID, err := getPid(h, ctx, pod)
 	if err != nil {
 		logrus.Errorf("Failed to get pidID : %v", err)
 		return err
 	}
 	logrus.Infof("ose_pod container main process id: %s", pidID)
-	//	out, err = exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
-	//	if err != nil {
-	//		logrus.Errorf("Failed to setup ip tables : %v", err)
-	//		return err
-	//	}
-	//	logrus.Infof("ip tables updated with no error")
-	//	updatedPod := pod.DeepCopy()
-	//	updatedPod.ObjectMeta.Annotations["initializer.istio.io/status"] = "true"
-	//	err = sdk.Update(updatedPod)
+	out, err = exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
+	if err != nil {
+		logrus.Errorf("Failed to setup ip tables : %v", err)
+		return err
+	}
+	logrus.Infof("ip tables updated with no error")
 	return err
 }
