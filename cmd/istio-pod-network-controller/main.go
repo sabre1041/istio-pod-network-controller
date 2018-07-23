@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"os"
-	"os/exec"
 	"runtime"
 
 	"github.com/docker/docker/client"
@@ -40,6 +39,6 @@ func main() {
 	logrus.Infof("Managing Pods Running on Node: %s", nodeName)
 	logrus.Infof("Raffa - 1")
 	sdk.Watch("v1", "Pod", "", 0)
-	sdk.Handle(stub.NewHandler(nodeName))
+	sdk.Handle(stub.NewHandler(nodeName, *cli))
 	sdk.Run(context.TODO())
 }

@@ -2,16 +2,20 @@ package stub
 
 import (
 	"context"
+	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"fmt"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"os/exec"
+	//	"os/exec"
+	"errors"
 	"sort"
+	"time"
 )
+
+var defaultTimeout = 10 * time.Second
 
 func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
 	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
@@ -40,10 +44,13 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 	return nil
 }
 
-func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) string, error {
-  	dockerCtx, cancelFn := context.WithTimeout(context.Background(), defaultTimeout)
+func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
+
+	dockerCtx, cancelFn := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancelFn()
 
+	podName := pod.ObjectMeta.Name
+	podNamespace := pod.ObjectMeta.Namespace
 	filter := filters.NewArgs()
 	filter.Add("label", "io.kubernetes.container.name=POD")
 	filter.Add("label", fmt.Sprintf("io.kubernetes.pod.name=%s", podName))
@@ -52,7 +59,7 @@ func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) string, error {
 	containers, err := h.dockerClient.ContainerList(dockerCtx, types.ContainerListOptions{Filters: filter})
 	if err != nil {
 		logrus.Error(err)
-		return nil, err
+		return "", err
 	}
 
 	if len(containers) == 1 {
@@ -60,12 +67,13 @@ func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) string, error {
 
 		if err != nil {
 			logrus.Error(err)
-			return nil, err
+			return "", err
 		}
 
 		logrus.Infof("Pod Namespace: %s - Pod Name: %s - Container PID: %d", podName, podNamespace, inspect.State.Pid)
+		return fmt.Sprintf("%s", inspect.State.Pid), nil
 	}
-	return inspect.State.Pid, nil
+	return "", errors.New("unable to find pod main pid")
 }
 
 func filterPod(pod *corev1.Pod) bool {
@@ -113,20 +121,24 @@ func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 	//cmd := "-c docker ps | grep " + fmt.Sprintf("%s", pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
 	//out, err := exec.Command("/bin/bash", cmd).Output()
 
-//	out, err := exec.Command("docker", "ps", "--filter", "label=io.kubernetes.container.name=POD", "--filter", "label=io.kubernetes.pod.name="+pod.ObjectMeta.Name, "-q").CombinedOutput()
-//	//out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", pod.ObjectMeta.Name, "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").CombinedOutput()
-//	if err != nil {
-//		logrus.Errorf("Failed to get containerID : %v", err)
-//		return err
-//	}
-//	containerID := fmt.Sprintf("%s", out)
-//	logrus.Infof("ose_pod container id: %s", containerID)
-//	out, err = exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerID).CombinedOutput()
-//	if err != nil {
-//		logrus.Errorf("Failed to get pidID : %v", err)
-//		return err
-//	}
-	pidID := getPid(h, ctx, pod)
+	//	out, err := exec.Command("docker", "ps", "--filter", "label=io.kubernetes.container.name=POD", "--filter", "label=io.kubernetes.pod.name="+pod.ObjectMeta.Name, "-q").CombinedOutput()
+	//	//out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", pod.ObjectMeta.Name, "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").CombinedOutput()
+	//	if err != nil {
+	//		logrus.Errorf("Failed to get containerID : %v", err)
+	//		return err
+	//	}
+	//	containerID := fmt.Sprintf("%s", out)
+	//	logrus.Infof("ose_pod container id: %s", containerID)
+	//	out, err = exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerID).CombinedOutput()
+	//	if err != nil {
+	//		logrus.Errorf("Failed to get pidID : %v", err)
+	//		return err
+	//	}
+	pidID, err := getPid(h, ctx, pod)
+	if err != nil {
+		logrus.Errorf("Failed to get pidID : %v", err)
+		return err
+	}
 	logrus.Infof("ose_pod container main process id: %s", pidID)
 	//	out, err = exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
 	//	if err != nil {
