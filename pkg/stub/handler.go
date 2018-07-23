@@ -2,6 +2,7 @@ package stub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -9,8 +10,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	//	"os/exec"
-	"errors"
+	"os/exec"
 	"sort"
 	"time"
 )
@@ -38,17 +38,22 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 					logrus.Errorf("Failed to process pod : %v", err)
 					return err
 				}
-				markPodAsInitialized(o)
+				err = markPodAsInitialized(o)
+				if err != nil {
+					logrus.Errorf("Failed to process pod : %v", err)
+					return err
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func markPodAsInitialized(pod *corev1.Pod) {
+func markPodAsInitialized(pod *corev1.Pod) error {
 	updatedPod := pod.DeepCopy()
 	updatedPod.ObjectMeta.Annotations["pod-network-controller.istio.io/status"] = "initialized"
-	err = sdk.Update(updatedPod)
+	err := sdk.Update(updatedPod)
+	return err
 }
 
 func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
@@ -117,7 +122,8 @@ func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 		return err
 	}
 	logrus.Infof("ose_pod container main process id: %s", pidID)
-	out, err = exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
+	out, err := exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
+	logrus.Infof("nsenter output: %s", out)
 	if err != nil {
 		logrus.Errorf("Failed to setup ip tables : %v", err)
 		return err
