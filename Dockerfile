@@ -20,8 +20,10 @@ RUN yum repolist > /dev/null && \
     rpm -V $INSTALL_PKGS && \
     yum clean all && \
     mkdir -p ${GOPATH}/{bin,src} && \
+    curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh && \
     cd /opt/app-root/go/src/github.com/sabre1041/istio-pod-network-controller && \
     cp bin/istio-iptables.sh /usr/local/bin/ && \
+    dep ensure -vendor-only &&\
     go build -v -o bin/main cmd/istio-pod-network-controller/main.go && \
     mv bin/main ${GOBIN}
 

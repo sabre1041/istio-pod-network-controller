@@ -2,7 +2,9 @@ package stub
 
 import (
 	"context"
-
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	"fmt"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
@@ -11,12 +13,13 @@ import (
 	"sort"
 )
 
-func NewHandler(nodeName string) sdk.Handler {
-	return &Handler{nodeName: nodeName}
+func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
+	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
 }
 
 type Handler struct {
-	nodeName string
+	nodeName     string
+	dockerClient client.Client
 }
 
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
@@ -26,7 +29,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		// Check to see if pod is running on current node
 		if h.nodeName == o.Spec.NodeName {
 			if filterPod(o) {
-				err := managePod(o)
+				err := managePod(h, ctx, o)
 				if err != nil {
 					logrus.Errorf("Failed to process pod : %v", err)
 					return err
@@ -35,6 +38,34 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		}
 	}
 	return nil
+}
+
+func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) string, error {
+  	dockerCtx, cancelFn := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancelFn()
+
+	filter := filters.NewArgs()
+	filter.Add("label", "io.kubernetes.container.name=POD")
+	filter.Add("label", fmt.Sprintf("io.kubernetes.pod.name=%s", podName))
+	filter.Add("label", fmt.Sprintf("io.kubernetes.pod.namespace=%s", podNamespace))
+
+	containers, err := h.dockerClient.ContainerList(dockerCtx, types.ContainerListOptions{Filters: filter})
+	if err != nil {
+		logrus.Error(err)
+		return nil, err
+	}
+
+	if len(containers) == 1 {
+		inspect, err := h.dockerClient.ContainerInspect(dockerCtx, containers[0].ID)
+
+		if err != nil {
+			logrus.Error(err)
+			return nil, err
+		}
+
+		logrus.Infof("Pod Namespace: %s - Pod Name: %s - Container PID: %d", podName, podNamespace, inspect.State.Pid)
+	}
+	return inspect.State.Pid, nil
 }
 
 func filterPod(pod *corev1.Pod) bool {
@@ -63,7 +94,7 @@ func filterPod(pod *corev1.Pod) bool {
 	return true
 }
 
-func managePod(pod *corev1.Pod) error {
+func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 	logrus.Infof("Processing Pod: %s , id %s", pod.ObjectMeta.Name, pod.ObjectMeta.UID)
 	//	cmd := "-c docker ps | grep " + string(pod.ObjectMeta.UID)
 	//	out, err := exec.Command("/bin/bash", cmd).Output()
@@ -82,20 +113,20 @@ func managePod(pod *corev1.Pod) error {
 	//cmd := "-c docker ps | grep " + fmt.Sprintf("%s", pod.ObjectMeta.UID) + " | grep k8s_POD | awk '{print $1}'"
 	//out, err := exec.Command("/bin/bash", cmd).Output()
 
-	out, err := exec.Command("docker", "ps", "--filter", "label=io.kubernetes.container.name=POD", "--filter", "label=io.kubernetes.pod.name="+pod.ObjectMeta.Name, "-q").CombinedOutput()
-	//out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", pod.ObjectMeta.Name, "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").CombinedOutput()
-	if err != nil {
-		logrus.Errorf("Failed to get containerID : %v", err)
-		return err
-	}
-	containerID := fmt.Sprintf("%s", out)
-	logrus.Infof("ose_pod container id: %s", containerID)
-	out, err = exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerID).CombinedOutput()
-	if err != nil {
-		logrus.Errorf("Failed to get pidID : %v", err)
-		return err
-	}
-	pidID := fmt.Sprintf("%s", out)
+//	out, err := exec.Command("docker", "ps", "--filter", "label=io.kubernetes.container.name=POD", "--filter", "label=io.kubernetes.pod.name="+pod.ObjectMeta.Name, "-q").CombinedOutput()
+//	//out, err := exec.Command("/bin/bash", "-c", "docker", "ps", "|", "grep", pod.ObjectMeta.Name, "|", "grep", "k8s_POD", "|", "awk", "'{print $1}'").CombinedOutput()
+//	if err != nil {
+//		logrus.Errorf("Failed to get containerID : %v", err)
+//		return err
+//	}
+//	containerID := fmt.Sprintf("%s", out)
+//	logrus.Infof("ose_pod container id: %s", containerID)
+//	out, err = exec.Command("docker", "inspect", "--format", "{{.State.Pid}}", containerID).CombinedOutput()
+//	if err != nil {
+//		logrus.Errorf("Failed to get pidID : %v", err)
+//		return err
+//	}
+	pidID := getPid(h, ctx, pod)
 	logrus.Infof("ose_pod container main process id: %s", pidID)
 	//	out, err = exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
 	//	if err != nil {

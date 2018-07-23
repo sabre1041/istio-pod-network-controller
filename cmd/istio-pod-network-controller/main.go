@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/docker/docker/client"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	stub "github.com/sabre1041/istio-pod-network-controller/pkg/stub"
@@ -29,6 +30,11 @@ func main() {
 	if nodeName == "" {
 		logrus.Error("NODE_NAME not defined")
 		return
+	}
+
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		panic(err)
 	}
 
 	logrus.Infof("Managing Pods Running on Node: %s", nodeName)
