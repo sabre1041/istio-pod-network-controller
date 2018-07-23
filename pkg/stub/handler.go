@@ -10,6 +10,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"os"
 	"os/exec"
 	"sort"
 	"time"
@@ -122,7 +123,7 @@ func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 		return err
 	}
 	logrus.Infof("ose_pod container main process id: %s", pidID)
-	out, err := exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "$ISTIO_PARAMS").CombinedOutput()
+	out, err := exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", os.Getenv("ISTIO_PARAMS")).CombinedOutput()
 	logrus.Infof("nsenter output: %s", out)
 	if err != nil {
 		logrus.Errorf("Failed to setup ip tables : %v", err)
