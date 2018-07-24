@@ -123,7 +123,8 @@ func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 		return err
 	}
 	logrus.Infof("ose_pod container main process id: %s", pidID)
-	out, err := exec.Command("nsenter", "-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", os.Getenv("ISTIO_PARAMS")).CombinedOutput()
+	args1 := []string{"-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh"}
+	out, err := exec.Command("nsenter", append(args1, os.Args[1:]...)...).CombinedOutput()
 	logrus.Infof("nsenter output: %s", out)
 	if err != nil {
 		logrus.Errorf("Failed to setup ip tables : %v", err)
