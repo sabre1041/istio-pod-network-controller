@@ -27,4 +27,4 @@ RUN yum repolist > /dev/null && \
     go build -v -o bin/main cmd/istio-pod-network-controller/main.go && \
     mv bin/main ${GOBIN}
 
-CMD ["/opt/app-root/go/bin/main"]
+ENTRYPOINT ["/opt/app-root/go/bin/main"]
