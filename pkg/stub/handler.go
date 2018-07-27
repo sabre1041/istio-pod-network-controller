@@ -13,12 +13,17 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"time"
 )
+
+var sortedNamespaces []string
 
 var defaultTimeout = 10 * time.Second
 
 func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
+	sortedNamespaces = strings.Split(",", os.Getenv("NAMESPACES"))
+	sort.Strings(sortedNamespaces)
 	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
 }
 
@@ -98,11 +103,21 @@ func filterPod(pod *corev1.Pod) bool {
 	// filter by whether the pod belongs to the mesh
 	// not sure how to do it right now.
 
+	// make sure the pod if not a deployer pod
+	if _, ok := pod.ObjectMeta.Labels["openshift.io/deployer-pod-for.name"]; ok {
+		return false
+	}
+
+	// make sure the pod if not a build pod
+	if _, ok := pod.ObjectMeta.Labels["openshift.io/build.name"]; ok {
+		return false
+	}
+
 	//filter by opted in namespaces
-	namespaces := []string{"tutorial"}
-	sort.Strings(namespaces)
-	i := sort.SearchStrings(namespaces, pod.ObjectMeta.Namespace)
-	if !(i < len(namespaces) && namespaces[i] == pod.ObjectMeta.Namespace) {
+	//	namespaces := []string{"tutorial"}
+	//	sort.Strings(namespaces)
+	i := sort.SearchStrings(sortedNamespaces, pod.ObjectMeta.Namespace)
+	if !(i < len(sortedNamespaces) && sortedNamespaces[i] == pod.ObjectMeta.Namespace) {
 		logrus.Infof("Pod %s not in considered namespaces, ignoring", pod.ObjectMeta.Name)
 		return false
 	}

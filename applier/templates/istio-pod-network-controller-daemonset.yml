@@ -29,6 +29,8 @@ objects:
       spec:
         containers:
         - env:
+          - name: NAMESPACES
+            value: tutorial
           - name: ENABLE_INBOUND_IPV6
             value: 'true'        
           - name: NODE_NAME
@@ -42,6 +44,8 @@ objects:
           - '-p'
           - '15001'
           - '-u'
+          - '1337'
+          - '-g'
           - '1337'
           - '-m'
           - REDIRECT

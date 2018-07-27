@@ -56,6 +56,11 @@ then build the code:
 go build -v -o bin/main cmd/istio-pod-network-controller/main.go
 ```
 
+## how to test
+follow the steps in this tutorial:
+
+https://github.com/redhat-developer-demos/istio-tutorial
+
 
 
 
