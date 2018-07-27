@@ -24,6 +24,7 @@ var defaultTimeout = 10 * time.Second
 func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
 	sortedNamespaces = strings.Split(",", os.Getenv("NAMESPACES"))
 	sort.Strings(sortedNamespaces)
+	logrus.Infof("Checking the following namespaces: %s", sortedNamespaces)
 	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
 }
 
@@ -105,11 +106,13 @@ func filterPod(pod *corev1.Pod) bool {
 
 	// make sure the pod if not a deployer pod
 	if _, ok := pod.ObjectMeta.Labels["openshift.io/deployer-pod-for.name"]; ok {
+		logrus.Infof("Pod %s is a deployer, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
 	// make sure the pod if not a build pod
 	if _, ok := pod.ObjectMeta.Labels["openshift.io/build.name"]; ok {
+		logrus.Infof("Pod %s is a builder, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
