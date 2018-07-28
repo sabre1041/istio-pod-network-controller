@@ -22,7 +22,7 @@ var sortedNamespaces []string
 var defaultTimeout = 10 * time.Second
 
 func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
-	sortedNamespaces = strings.Split(",", os.Getenv("NAMESPACES"))
+	sortedNamespaces = strings.Split(os.Getenv("NAMESPACES"), ",")
 	sort.Strings(sortedNamespaces)
 	logrus.Infof("Checking the following namespaces: %s", sortedNamespaces)
 	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
