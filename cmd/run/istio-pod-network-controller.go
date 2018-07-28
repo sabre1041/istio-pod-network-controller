@@ -1,17 +1,25 @@
-package main
+package run
 
 import (
 	"context"
-	"os"
-	"runtime"
-
 	"github.com/docker/docker/client"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
-	stub "github.com/sabre1041/istio-pod-network-controller/pkg/stub"
-
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
+	"os"
+	"runtime"
 )
+
+var log = logrus.New()
+
+func initLog() {
+	var err error
+	log.Level, err = logrus.ParseLevel(viper.GetString("log-level"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
 
 func printVersion() {
 	logrus.Infof("Go Version: %s", runtime.Version())
@@ -19,7 +27,8 @@ func printVersion() {
 	logrus.Infof("operator-sdk Version: %v", sdkVersion.Version)
 }
 
-func main() {
+func Run() {
+	initLog()
 	//out, _ := exec.Command("docker", "ps").CombinedOutput()
 	//logrus.Infof("%s", out)
 	printVersion()
@@ -38,6 +47,6 @@ func main() {
 
 	logrus.Infof("Managing Pods Running on Node: %s", nodeName)
 	sdk.Watch("v1", "Pod", "", 0)
-	sdk.Handle(stub.NewHandler(nodeName, *cli))
+	sdk.Handle(NewHandler(nodeName, *cli))
 	sdk.Run(context.TODO())
 }

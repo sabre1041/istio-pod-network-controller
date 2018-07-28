@@ -24,7 +24,8 @@ RUN yum repolist > /dev/null && \
     cd /opt/app-root/go/src/github.com/sabre1041/istio-pod-network-controller && \
     cp bin/istio-iptables.sh /usr/local/bin/ && \
     dep ensure -vendor-only &&\
-    go build -v -o bin/main cmd/istio-pod-network-controller/main.go && \
-    mv bin/main ${GOBIN}
+    go build -o bin/istio-pod-network-controller -v main.go && \
+    mv bin/istio-pod-network-controller ${GOBIN} && \
+    rm -rf ${GOPATH}
 
-ENTRYPOINT ["/opt/app-root/go/bin/main"]
+ENTRYPOINT ["/opt/app-root/go/bin/istio-pod-network-controller"]

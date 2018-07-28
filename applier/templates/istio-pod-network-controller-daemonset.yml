@@ -29,34 +29,12 @@ objects:
       spec:
         containers:
         - env:
-          - name: NAMESPACES
-            value: tutorial
-          - name: ENABLE_INBOUND_IPV6
-            value: 'true'        
+          - name: INCLUDE_NAMESPACES
+            value: tutorial,bookinfo        
           - name: NODE_NAME
             valueFrom:
               fieldRef:
-                fieldPath: spec.nodeName
-          - name: ISTIO_PARAMS
-            value: >
-              -p 15001 -u 1337 -m REDIRECT -i '*' -x -b 8778, 9779, -d ''              
-          args:
-          - '-p'
-          - '15001'
-          - '-u'
-          - '1337'
-          - '-g'
-          - '1337'
-          - '-m'
-          - REDIRECT
-          - '-i'
-          - '*'
-          - '-x'
-          - ''
-          - '-b'
-          - '8778, 9779,'
-          - '-d'
-          - ''      
+                fieldPath: spec.nodeName      
           image: ${IMAGE}
           imagePullPolicy: Always
           name: ${NAME}

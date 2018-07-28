@@ -1,4 +1,4 @@
-package stub
+package run
 
 import (
 	"context"
@@ -9,22 +9,35 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
-	"os"
 	"os/exec"
 	"sort"
 	"strings"
 	"time"
 )
 
-var sortedNamespaces []string
+const EnvoyPortAnnotation = "pod-network-controller.istio.io/envoy-port"
+const InterceptModeAnnotation = "pod-network-controller.istio.io/intercept-mode"
+const IncludePortsAnnotation = "pod-network-controller.istio.io/include-inbound-ports"
+const ExcludePortsAnnotation = "pod-network-controller.istio.io/exclude-inbound-ports"
+const IncludeCidrsAnnotation = "pod-network-controller.istio.io/include-outbound-cidrs"
+const ExcludeCidrsAnnotation = "pod-network-controller.istio.io/exclude-outbound-cidrs"
+const EnvoyUseridAnnotation = "pod-network-controller.istio.io/envoy-userid"
+const EnvoyGroupidAnnotation = "pod-network-controller.istio.io/envoy-groupid"
+
+var sortedIncludeNamespaces []string
+var sortedExcludeNamespaces []string
 
 var defaultTimeout = 10 * time.Second
 
 func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
-	sortedNamespaces = strings.Split(os.Getenv("NAMESPACES"), ",")
-	sort.Strings(sortedNamespaces)
-	logrus.Infof("Checking the following namespaces: %s", sortedNamespaces)
+	sortedIncludeNamespaces = strings.Split(viper.GetString("include-namespaces"), ",")
+	sort.Strings(sortedIncludeNamespaces)
+	sortedExcludeNamespaces = strings.Split(viper.GetString("exclude-namespaces"), ",")
+	sort.Strings(sortedExcludeNamespaces)
+	logrus.Infof("Checking the following namespaces: %s", sortedIncludeNamespaces)
+	logrus.Infof("Excluding the following namespaces: %s", sortedExcludeNamespaces)
 	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
 }
 
@@ -119,8 +132,14 @@ func filterPod(pod *corev1.Pod) bool {
 	//filter by opted in namespaces
 	//	namespaces := []string{"tutorial"}
 	//	sort.Strings(namespaces)
-	i := sort.SearchStrings(sortedNamespaces, pod.ObjectMeta.Namespace)
-	if !(i < len(sortedNamespaces) && sortedNamespaces[i] == pod.ObjectMeta.Namespace) {
+	i := sort.SearchStrings(sortedExcludeNamespaces, pod.ObjectMeta.Namespace)
+	if i < len(sortedExcludeNamespaces) && sortedExcludeNamespaces[i] == pod.ObjectMeta.Namespace {
+		logrus.Infof("Pod %s not in excluded namespaces, ignoring", pod.ObjectMeta.Name)
+		return false
+	}
+
+	i = sort.SearchStrings(sortedIncludeNamespaces, pod.ObjectMeta.Namespace)
+	if !(i < len(sortedIncludeNamespaces) && sortedIncludeNamespaces[i] == pod.ObjectMeta.Namespace) {
 		logrus.Infof("Pod %s not in considered namespaces, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
@@ -141,8 +160,10 @@ func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 		return err
 	}
 	logrus.Infof("ose_pod container main process id: %s", pidID)
-	args1 := []string{"-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh"}
-	out, err := exec.Command("nsenter", append(args1, os.Args[1:]...)...).CombinedOutput()
+	args := []string{"-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "-p", getEnvoyPort(pod),
+		"-u", getUserID(pod), "-g", getGroupID(pod), "-m", getInterceptMode(pod), "-b", getIncludedInboundPorts(pod), "-d", getExcludedInboundPorts(pod),
+		"-i", getIncludedOutboundCidrs(pod), "-x", getExcludedOutboundCidrs(pod)}
+	out, err := exec.Command("nsenter", args...).CombinedOutput()
 	logrus.Infof("nsenter output: %s", out)
 	if err != nil {
 		logrus.Errorf("Failed to setup ip tables : %v", err)
@@ -150,4 +171,73 @@ func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 	}
 	logrus.Infof("ip tables updated with no error")
 	return err
+}
+
+func getEnvoyPort(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[EnvoyPortAnnotation]; ok {
+		return port
+	} else {
+		return viper.GetString("envoy-port")
+	}
+}
+
+func getUserID(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[EnvoyUseridAnnotation]; ok {
+		return port
+	} else {
+		return viper.GetString("envoy-userid")
+	}
+}
+
+func getGroupID(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[EnvoyGroupidAnnotation]; ok {
+		return port
+	} else {
+		return viper.GetString("envoy-groupid")
+	}
+}
+
+func getInterceptMode(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[InterceptModeAnnotation]; ok {
+		return port
+	} else {
+		return viper.GetString("istio-inbound-interception-mode")
+	}
+}
+
+func getIncludedInboundPorts(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[IncludePortsAnnotation]; ok {
+		return getPodServicePorts(pod) + "," + port
+	} else {
+		ports := getPodServicePorts(pod) + "," + viper.GetString("istio-include-inbound-ports")
+		return ports
+	}
+}
+
+func getPodServicePorts(pod *corev1.Pod) string {
+	return ""
+}
+
+func getExcludedInboundPorts(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[ExcludePortsAnnotation]; ok {
+		return port
+	} else {
+		return viper.GetString("istio-exclude-inbound-ports")
+	}
+}
+
+func getIncludedOutboundCidrs(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[IncludeCidrsAnnotation]; ok {
+		return port
+	} else {
+		return viper.GetString("istio-include-outbound-cidrs")
+	}
+}
+
+func getExcludedOutboundCidrs(pod *corev1.Pod) string {
+	if port, ok := pod.ObjectMeta.Labels[ExcludeCidrsAnnotation]; ok {
+		return port
+	} else {
+		return viper.GetString("istio-exclude-outbound-cidrs")
+	}
 }
