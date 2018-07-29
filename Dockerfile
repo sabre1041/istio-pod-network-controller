@@ -1,8 +1,6 @@
 #FROM registry.access.redhat.com/rhel7/rhel:7.5
 FROM centos:7
 
-MAINTAINER Andrew Block <ablock@redhat.com>
-
 LABEL io.k8s.description="Image to Manage Istio's Pod Network" \
       io.k8s.display-name="Istio Pod Network Controller" \
       io.openshift.tags="go"

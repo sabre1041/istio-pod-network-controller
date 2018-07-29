@@ -34,7 +34,9 @@ objects:
           - name: NODE_NAME
             valueFrom:
               fieldRef:
-                fieldPath: spec.nodeName      
+                fieldPath: spec.nodeName
+          args:
+          - 'run'            
           image: ${IMAGE}
           imagePullPolicy: Always
           name: ${NAME}

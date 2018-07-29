@@ -206,7 +206,7 @@ func getIncludedInboundPorts(pod *corev1.Pod) string {
 		ports := ""
 		for _, k := range pod.Spec.Containers {
 			for _, p := range k.Ports {
-				ports += string(p.ContainerPort) + ","
+				ports += fmt.Sprintf("%d", p.ContainerPort) + ","
 			}
 		}
 		return ports
