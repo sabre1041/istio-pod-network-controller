@@ -30,7 +30,7 @@ objects:
         containers:
         - env:
           - name: INCLUDE_NAMESPACES
-            value: tutorial,bookinfo        
+            value: ${INCLUDE_NAMESPACES}        
           - name: NODE_NAME
             valueFrom:
               fieldRef:
@@ -70,3 +70,10 @@ parameters:
   description: Service Account Name
   value: istio-pod-network-controller
   required: true
+- name: INCLUDE_NAMESPACES
+  displayName: Namespaces that will be consired by this controller
+  description: Namespaces that will be consired by this controller
+  value: bookinfo
+  required: true
+
+  

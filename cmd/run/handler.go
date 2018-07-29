@@ -17,12 +17,13 @@ import (
 	"time"
 )
 
+const EnvoyProxyUserID = "1337"
 const EnvoyPortAnnotation = "pod-network-controller.istio.io/envoy-port"
-const InterceptModeAnnotation = "pod-network-controller.istio.io/intercept-mode"
-const IncludePortsAnnotation = "pod-network-controller.istio.io/include-inbound-ports"
-const ExcludePortsAnnotation = "pod-network-controller.istio.io/exclude-inbound-ports"
-const IncludeCidrsAnnotation = "pod-network-controller.istio.io/include-outbound-cidrs"
-const ExcludeCidrsAnnotation = "pod-network-controller.istio.io/exclude-outbound-cidrs"
+const InterceptModeAnnotation = "sidecar.istio.io/interceptionMode"
+const IncludePortsAnnotation = "traffic.sidecar.istio.io/includeInboundPorts"
+const ExcludePortsAnnotation = "traffic.sidecar.istio.io/excludeInboundPorts"
+const IncludeCidrsAnnotation = "traffic.sidecar.istio.io/includeOutboundIPRanges"
+const ExcludeCidrsAnnotation = "traffic.sidecar.istio.io/excludeOutboundIPRanges"
 const EnvoyUseridAnnotation = "pod-network-controller.istio.io/envoy-userid"
 const EnvoyGroupidAnnotation = "pod-network-controller.istio.io/envoy-groupid"
 
@@ -163,6 +164,7 @@ func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
 	args := []string{"-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "-p", getEnvoyPort(pod),
 		"-u", getUserID(pod), "-g", getGroupID(pod), "-m", getInterceptMode(pod), "-b", getIncludedInboundPorts(pod), "-d", getExcludedInboundPorts(pod),
 		"-i", getIncludedOutboundCidrs(pod), "-x", getExcludedOutboundCidrs(pod)}
+	logrus.Infof("excuting ip tables rules with the following arguments: %s", args)
 	out, err := exec.Command("nsenter", args...).CombinedOutput()
 	logrus.Infof("nsenter output: %s", out)
 	if err != nil {
@@ -182,34 +184,31 @@ func getEnvoyPort(pod *corev1.Pod) string {
 }
 
 func getUserID(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[EnvoyUseridAnnotation]; ok {
-		return port
-	} else {
-		return viper.GetString("envoy-userid")
-	}
+	return EnvoyProxyUserID
 }
 
 func getGroupID(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[EnvoyGroupidAnnotation]; ok {
-		return port
-	} else {
-		return viper.GetString("envoy-groupid")
-	}
+	return EnvoyProxyUserID
 }
 
 func getInterceptMode(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[InterceptModeAnnotation]; ok {
-		return port
+	if interceptMode, ok := pod.ObjectMeta.Labels[InterceptModeAnnotation]; ok {
+		return interceptMode
 	} else {
 		return viper.GetString("istio-inbound-interception-mode")
 	}
 }
 
 func getIncludedInboundPorts(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[IncludePortsAnnotation]; ok {
-		return getPodServicePorts(pod) + "," + port
+	if includePorts, ok := pod.ObjectMeta.Labels[IncludePortsAnnotation]; ok {
+		return includePorts
 	} else {
-		ports := getPodServicePorts(pod) + "," + viper.GetString("istio-include-inbound-ports")
+		ports := ""
+		for _, k := range pod.Spec.Containers {
+			for _, p := range k.Ports {
+				ports += string(p.ContainerPort) + ","
+			}
+		}
 		return ports
 	}
 }
@@ -222,22 +221,22 @@ func getExcludedInboundPorts(pod *corev1.Pod) string {
 	if port, ok := pod.ObjectMeta.Labels[ExcludePortsAnnotation]; ok {
 		return port
 	} else {
-		return viper.GetString("istio-exclude-inbound-ports")
+		return ""
 	}
 }
 
 func getIncludedOutboundCidrs(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[IncludeCidrsAnnotation]; ok {
-		return port
+	if includeCidrs, ok := pod.ObjectMeta.Labels[IncludeCidrsAnnotation]; ok {
+		return includeCidrs
 	} else {
-		return viper.GetString("istio-include-outbound-cidrs")
+		return "*"
 	}
 }
 
 func getExcludedOutboundCidrs(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[ExcludeCidrsAnnotation]; ok {
-		return port
+	if excludeCidrs, ok := pod.ObjectMeta.Labels[ExcludeCidrsAnnotation]; ok {
+		return excludeCidrs
 	} else {
-		return viper.GetString("istio-exclude-outbound-cidrs")
+		return ""
 	}
 }
