@@ -16,9 +16,6 @@ The ability to run with a specific uid is required by the stio proxy.
 This controller is deployed as a daemonset
 Each pod of this Daemonset takes care of the pdos deployed in the respective node.
 Each pod os this daemon set watch for newly created pods, if they belongs to the istio mesh, it configures the iptables of the pod so to make it join the mesh.
-The picture below describe the process.
- 
-TODO add picture
 
 ## Prerequisites
 
