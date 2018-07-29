@@ -97,7 +97,7 @@ ansible-galaxy install -r requirements.yml --roles-path=galaxy
 Deployment
 
 ```
-ansible-playbook -i ./inventory galaxy/openshift-applier/playbooks/openshift-cluster-seed.yml
+ansible-playbook -i ./applier/inventory galaxy/openshift-applier/playbooks/openshift-cluster-seed.yml
 ```
 
 ## Building

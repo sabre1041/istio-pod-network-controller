@@ -1,6 +1,6 @@
 ---
 
-istio_pod_network_controller_namespace: "istio-pod-network-controller"
+istio_pod_network_controller_namespace: "istio-system"
 
 openshift_cluster_content:
   - object: projectrequest

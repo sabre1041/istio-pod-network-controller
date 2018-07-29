@@ -1,4 +1,5 @@
-FROM registry.access.redhat.com/rhel7/rhel:7.5
+#FROM registry.access.redhat.com/rhel7/rhel:7.5
+FROM centos:7
 
 MAINTAINER Andrew Block <ablock@redhat.com>
 
@@ -13,7 +14,7 @@ ENV GOPATH=/opt/app-root/go \
 ADD . /opt/app-root/go/src/github.com/sabre1041/istio-pod-network-controller
 
 RUN yum repolist > /dev/null && \
-    yum-config-manager --enable rhel-7-server-optional-rpms --enable rhel-7-server-extras-rpms && \
+#    yum-config-manager --enable rhel-7-server-optional-rpms --enable rhel-7-server-extras-rpms && \
     yum clean all && \
     INSTALL_PKGS="golang iptables iproute git" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
@@ -25,7 +26,7 @@ RUN yum repolist > /dev/null && \
     cp bin/istio-iptables.sh /usr/local/bin/ && \
     dep ensure -vendor-only &&\
     go build -o bin/istio-pod-network-controller -v main.go && \
-    mv bin/istio-pod-network-controller ${GOBIN} && \
+    mv bin/istio-pod-network-controller /usr/local/bin && \
     rm -rf ${GOPATH}
 
-ENTRYPOINT ["/opt/app-root/go/bin/istio-pod-network-controller"]
+ENTRYPOINT ["/usr/local/bin/istio-pod-network-controller"]
