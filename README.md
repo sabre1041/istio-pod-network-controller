@@ -54,7 +54,8 @@ oc expose svc prometheus
 oc expose svc tracing
 ```
 
-The istio-pod-network-controller can run in any namespace, here we assume it's going to run in the istio-system namespace together with the other istio components
+### Install istio-pod-network-controller
+The istio-pod-network-controller will be installed in the istio-system namespace together with the other istio components
 to install the istio-pod-network-controller run the following commands
 ```
 oc process applier/policies.yml NAMESPACE=istio-system | oc apply -f -
