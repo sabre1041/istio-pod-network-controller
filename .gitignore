@@ -86,6 +86,8 @@ anaconda-mode/
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+vendor/
+
 ### Vim ###
 # swap
 .sw[a-p]
@@ -107,3 +109,15 @@ tags
 
 
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
+/.settings/
+/.classpath
+/.project
+/galaxy/
+/main
+/tweaked.txt
+/untweaked.txt
+/error.txt
+/preference.yml
+/recommendation.yml
+/denier.yaml
+/istio-pod-network-controller

@@ -29,16 +29,29 @@ objects:
       spec:
         containers:
         - env:
+          - name: INCLUDE_NAMESPACES
+            value: ${INCLUDE_NAMESPACES}        
           - name: NODE_NAME
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          args:
+          - 'run'            
           image: ${IMAGE}
           imagePullPolicy: Always
           name: ${NAME}
           securityContext:
             privileged: true
+          volumeMounts:
+          - name: docker
+            mountPath: /var/run/docker.sock            
         serviceAccountName: ${SERVICE_ACCOUNT}
+        hostPID: true
+        volumes:
+        - name: docker
+          hostPath: 
+            path: /var/run/docker.sock
+            type: Socket              
     updateStrategy:
       rollingUpdate:
         minReadySeconds: 600
@@ -59,3 +72,10 @@ parameters:
   description: Service Account Name
   value: istio-pod-network-controller
   required: true
+- name: INCLUDE_NAMESPACES
+  displayName: Namespaces that will be consired by this controller
+  description: Namespaces that will be consired by this controller
+  value: bookinfo
+  required: true
+
+  

@@ -52,10 +52,10 @@ parameters:
   value: rhel7:7.5
 - description: Git branch/tag reference
   name: SOURCE_REPOSITORY_REF
-  value: master
+  value: raffa2
 - description: Git source URL for application
   name: SOURCE_REPOSITORY_URL
   required: true
-  value: https://github.com/sabre1041/istio-pod-network-controller
+  value: https://github.com/raffaelespazzoli/istio-pod-network-controller
 - description: Path within Git repository to build; empty for root of repository
   name: CONTEXT_DIR

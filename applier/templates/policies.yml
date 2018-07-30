@@ -51,7 +51,7 @@ parameters:
 - name: NAMESPACE
   displayName: Namespace
   description: Namespace Containing Resources
-  value: istio-pod-network-controller
+  value: istio-system
   required: true
 - name: ROLE_NAME
   displayName: Role Name
