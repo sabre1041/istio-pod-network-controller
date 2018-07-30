@@ -18,7 +18,7 @@ Each pod of this Daemonset takes care of the pdos deployed in the respective nod
 Each pod of this daemon watches for newly created pods, if they belongs to the istio mesh, it configures the iptables of the pod so to make it join the mesh.
 It then marks the pods as initialized with an annotation.
 
-You can find instrictions on how to build this project [here](./build.html)
+You can find instrictions on how to build this project [here](./build.md)
 
 ## Installation
 
