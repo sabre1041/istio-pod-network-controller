@@ -16,7 +16,9 @@ The ability to run with a specific uid is required by the stio proxy.
 This controller is deployed as a daemonset
 Each pod of this Daemonset takes care of the pdos deployed in the respective node.
 Each pod of this daemon watches for newly created pods, if they belongs to the istio mesh, it configures the iptables of the pod so to make it join the mesh.
-It then marks the pods as initialized with an annotation 
+It then marks the pods as initialized with an annotation.
+
+You can find instrictions on how to build this project [here](./build.html)
 
 ## Installation
 
@@ -84,54 +86,4 @@ oc apply -f applier/templates/bookinfo.yaml -n bookinfo
 ```
 
 At this point the pods should deploy correclty and should participate to the istio mesh.
-
-## Installation with the applier
-
-The applier is a infrastrcuture as code approach used in the OpenShift Community of practice.
-Clone Repository
-
-```
-mkdir -p $GOPATH/src/github.com/sabre1041
-cd $GOPATH/src/github.com/sabre1041
-git clone https://github.com/sabre1041/istio-pod-network-controller.git
-cd istio-pod-network-controller
-```
-
-Login to OpenShift Environment
-
-```
-oc login https://<MASTER_API>
-```
-
-Run Ansible Galaxy to retrieve dependencies
-
-```
-ansible-galaxy install -r requirements.yml --roles-path=galaxy
-```
-
-Deployment
-
-```
-ansible-playbook -i ./applier/inventory galaxy/openshift-applier/playbooks/openshift-cluster-seed.yml
-```
-
-## Building
-
-To build the code install `dep`:
-```
-curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-```
-
-initialize the dependecies:
-```
-dep ensure -vendor-only
-```
-then build the code:
-```
-go build -v -o istio-pod-network-controller main.go
-```
-
-
-
-
 
