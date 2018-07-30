@@ -1,10 +1,10 @@
-# Build instrictions
+# Build instructions
 
 You can build this project in two ways: with the applier of manually.
 
 ## Installation with the applier
 
-The applier is a infrastrcuture as code approach used in the OpenShift Community of practice.
+The applier is a infrastructure as code approach used in the OpenShift Community of practice.
 This automation will build the project and deploy the istio-pod-network-controller.
 Refere to the manual deployment steps to deploy istio and the examples.
 
