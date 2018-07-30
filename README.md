@@ -73,13 +73,14 @@ oc expose svc productpage -n bookinfo
 
 At this point the pods should deploy correclty and should participate to the istio mesh.
 
-### Testing with automatic sidecar injection 
+### Testing with automatic sidecar injection (not working in OpenShift) 
 
 Run the following commands:
 ```
 oc new-project bookinfo
+oc label namespace bookinfo istio-injection=enabled
 oc adm policy add-scc-to-user anyuid -z default -n bookinfo
-oc apply -f applier/templates/bookinfo.yaml-n bookinfo
+oc apply -f applier/templates/bookinfo.yaml -n bookinfo
 ```
 
 At this point the pods should deploy correclty and should participate to the istio mesh.
