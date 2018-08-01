@@ -49,5 +49,5 @@ dep ensure -vendor-only
 ```
 then build the code:
 ```
-go build -v -o istio-pod-network-controller main.go
+go build -v -o istio-pod-network-controller cmd/istio-pod-network-controller/main.go
 ```
