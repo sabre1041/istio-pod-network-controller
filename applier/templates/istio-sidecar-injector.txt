@@ -5,7 +5,7 @@ template: |-
     image: [[ if (isset .ObjectMeta.Annotations "sidecar.istio.io/proxyImage") -]]
     "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyImage" ]]"
     [[ else -]]
-    docker.io/istio/proxyv2:0.8.0
+    gcr.io/istio-release/proxyv2:1.0.0
     [[ end -]]
     args:
     - proxy
@@ -37,7 +37,7 @@ template: |-
     - --proxyAdminPort
     - [[ .ProxyConfig.ProxyAdminPort ]]
     - --controlPlaneAuthPolicy
-    - [[ .ProxyConfig.ControlPlaneAuthPolicy ]]
+    - [[ or (index .ObjectMeta.Annotations "sidecar.istio.io/controlPlaneAuthPolicy") .ProxyConfig.ControlPlaneAuthPolicy ]]
     env:
     - name: POD_NAME
       valueFrom:
@@ -59,21 +59,27 @@ template: |-
       value: [[ or (index .ObjectMeta.Annotations "sidecar.istio.io/interceptionMode") .ProxyConfig.InterceptionMode.String ]]
     imagePullPolicy: IfNotPresent
     securityContext:
-        privileged: false
-        readOnlyRootFilesystem: true
-        [[ if eq (or (index .ObjectMeta.Annotations "sidecar.istio.io/interceptionMode") .ProxyConfig.InterceptionMode.String) "TPROXY" -]]
-        capabilities:
-          add:
-          - NET_ADMIN
-        [[ else -]]
-        runAsUser: 1337
-        [[ end -]]
+      privileged: false
+      readOnlyRootFilesystem: true
+      [[ if eq (or (index .ObjectMeta.Annotations "sidecar.istio.io/interceptionMode") .ProxyConfig.InterceptionMode.String) "TPROXY" -]]
+      capabilities:
+        add:
+        - NET_ADMIN
+      runAsGroup: 1337
+      [[ else -]]
+      runAsUser: 1337
+      [[ end -]]
     restartPolicy: Always
     resources:
+      [[ if (isset .ObjectMeta.Annotations "sidecar.istio.io/proxyCPU") -]]
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyCPU" ]]"
+        memory: "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyMemory" ]]"
+    [[ else -]]
+      requests:
+        cpu: 10m
       
+    [[ end -]]
     volumeMounts:
     - mountPath: /etc/istio/proxy
       name: istio-envoy
