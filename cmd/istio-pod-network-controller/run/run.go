@@ -12,27 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package run
 
 import (
-	run "github.com/sabre1041/istio-pod-network-controller/cmd/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"context"
+	"os"
+	"runtime"
+
+	"github.com/docker/docker/client"
+	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
+	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	handler "github.com/sabre1041/istio-pod-network-controller/pkg/handler"
+	"github.com/sirupsen/logrus"
 )
 
-// runCmd represents the run command
-var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "starts the istio pod network controller",
-	Long:  "starts the istio pod network controller",
-	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: Work your own magic here
-		run.Run()
-	},
-}
+var log = logrus.New()
 
-func init() {
-	RootCmd.AddCommand(runCmd)
+func NewRunCmd() *cobra.Command {
+
+	runCmd := &cobra.Command{
+		Use:   "run",
+		Short: "starts the istio pod network controller",
+		Long:  "starts the istio pod network controller",
+		Run:   runFunc,
+	}
 
 	// Here you will define your flags and configuration settings.
 
@@ -48,8 +54,8 @@ func init() {
 	runCmd.Flags().String("exclude-namespaces", "", "comma-separated list of namespaces that should not be considered (ex: namespace1,namespace2,namespace3).")
 	runCmd.Flags().String("exclude-namespaces-regexp", "", "regular expression that identifies namespaces that should not be considered (not implemented yet).")
 	runCmd.Flags().String("enable-inbound-ipv6", "false", "whether inbound ipv6 connection should be managed by the mesh (currently is must be set to false)")
-	runCmd.Flags().String("envoy-port", "15001", "Specify the envoy port to which redirect all TCP traffic. This is a cluster-wide setting, you can override it by adding this annotation to your pods "+run.EnvoyPortAnnotation)
-	runCmd.Flags().String("istio-inbound-interception-mode", "REDIRECT", "The mode used to redirect inbound connections to Envoy, either REDIRECT or TPROXY. his is a cluster-wide setting, you can override it by adding this annotation to your pods "+run.InterceptModeAnnotation)
+	runCmd.Flags().String("envoy-port", "15001", "Specify the envoy port to which redirect all TCP traffic. This is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.EnvoyPortAnnotation)
+	runCmd.Flags().String("istio-inbound-interception-mode", "REDIRECT", "The mode used to redirect inbound connections to Envoy, either REDIRECT or TPROXY. his is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.InterceptModeAnnotation)
 	//runCmd.Flags().String("istio-include-inbound-ports", "", "comma-separated list of ports that will be redirected to Envoy. This list will be added to the ports desumed from the service controlling the pod. The wildcard character \"*\" can be used to configure redirection for all ports. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.IncludePortsAnnotation)
 	//runCmd.Flags().String("istio-exclude-inbound-ports", "", "Comma separated list of inbound ports to be excluded from redirection to Envoy (optional). Only applies when all inbound traffic (i.e. \"*\") is being redirected. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.ExcludePortsAnnotation)
 	//runCmd.Flags().String("istio-include-outbound-cidrs", "*", "Comma separated list of IP ranges in CIDR form to redirect to envoy (optional). The wildcardcharacter \"*\" can be used to redirect all outbound traffic. An empty list will disable all outbound redirection. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.IncludeCidrsAnnotation)
@@ -70,4 +76,43 @@ func init() {
 	//viper.BindPFlag("envoy-userid", runCmd.Flags().Lookup("envoy-userid"))
 	//viper.BindPFlag("envoy-groupid", runCmd.Flags().Lookup("envoy-groupid"))
 
+	return runCmd
+
+}
+
+func initLog() {
+	var err error
+	log.Level, err = logrus.ParseLevel(viper.GetString("log-level"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func printVersion() {
+	logrus.Infof("Go Version: %s", runtime.Version())
+	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
+	logrus.Infof("operator-sdk Version: %v", sdkVersion.Version)
+}
+
+func runFunc(cmd *cobra.Command, args []string) {
+	initLog()
+
+	printVersion()
+
+	nodeName := os.Getenv("NODE_NAME")
+
+	if nodeName == "" {
+		logrus.Error("NODE_NAME not defined")
+		return
+	}
+
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		panic(err)
+	}
+
+	logrus.Infof("Managing Pods Running on Node: %s", nodeName)
+	sdk.Watch("v1", "Pod", "", 0)
+	sdk.Handle(handler.NewHandler(nodeName, *cli))
+	sdk.Run(context.TODO())
 }

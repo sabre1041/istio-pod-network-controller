@@ -12,34 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package main
 
 import (
 	"flag"
 	"fmt"
+	"os"
+	"strings"
+
+	"github.com/sabre1041/istio-pod-network-controller/cmd/istio-pod-network-controller/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"os"
-	"strings"
 )
 
-var cfgFile string
-
-// RootCmd represents the base command when called without any subcommands
-var RootCmd = &cobra.Command{
-	Use:   "istio-pod-network-controller",
-	Short: "A controller that adds pods to the istio service mesh",
-	Long:  "A controller that adds pods to the istio service mesh",
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
-}
-
-// Execute adds all child commands to the root command sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := RootCmd.Execute(); err != nil {
+func main() {
+	if err := newRootCmd().Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
 	}
@@ -50,16 +38,28 @@ func init() {
 	flag.CommandLine.Parse([]string{})
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().String("log-level", "info", "log level")
-	viper.BindPFlag("log-level", RootCmd.PersistentFlags().Lookup("log-level"))
-
 }
 
-// initConfig reads in config file and ENV variables if set.
-// initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
 	// read in environment variables that match
 	viper.AutomaticEnv()
+}
+
+func newRootCmd() *cobra.Command {
+
+	rootCmd := &cobra.Command{
+		Use:   "istio-pod-network-controller",
+		Short: "A controller that adds pods to the istio service mesh",
+		Long:  "A controller that adds pods to the istio service mesh",
+	}
+
+	rootCmd.PersistentFlags().String("log-level", "info", "log level")
+	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
+
+	rootCmd.AddCommand(run.NewRunCmd())
+
+	return rootCmd
+
 }
