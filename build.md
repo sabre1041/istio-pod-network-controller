@@ -1,53 +1,60 @@
 # Build instructions
 
-You can build this project in two ways: with the applier of manually.
+This project can be built using one of two approaches:
+
+1. Using the [openshift-applier](https://github.com/redhat-cop/openshift-applier)
+2. Manually building the project
 
 ## Installation with the applier
 
-The applier is a infrastructure as code approach used in the OpenShift Community of practice.
-This automation will build the project and deploy the istio-pod-network-controller.
-Refere to the manual deployment steps to deploy istio and the examples.
+The applier is a Infrastructure as Code (IaC) approach from the Red Hat Communities of Practice (CoP). The automation performed by the tool will result in build and deployment of the `istio-pod-network-controller`.
+
+Refer to the steps illustrated on the project [README](./README.md) on deploying Istio.
 
 
-Clone Repository
+1. Clone the Repository
 
-```
-mkdir -p $GOPATH/src/github.com/sabre1041
-cd $GOPATH/src/github.com/sabre1041
-git clone https://github.com/sabre1041/istio-pod-network-controller.git
-cd istio-pod-network-controller
-```
+    ```
+    mkdir -p $GOPATH/src/github.com/sabre1041
+    cd $GOPATH/src/github.com/sabre1041
+    git clone https://github.com/sabre1041/istio-pod-network-controller.git
+    cd istio-pod-network-controller
+    ```
 
-Login to OpenShift Environment
+2. Login to OpenShift Environment
 
-```
-oc login https://<MASTER_API>
-```
+    ```
+    oc login https://<MASTER_API>
+    ```
 
-Run Ansible Galaxy to retrieve dependencies
+3. Run Ansible Galaxy to retrieve the required dependencies
 
-```
-ansible-galaxy install -r requirements.yml --roles-path=galaxy
-```
+    ```
+    ansible-galaxy install -r requirements.yml --roles-path=galaxy
+    ```
 
-Deployment
+4. Execute the `openshift-applier` to apply the configurations to the cluster
 
-```
-ansible-playbook -i ./applier/inventory galaxy/openshift-applier/playbooks/openshift-cluster-seed.yml
-```
+    ```
+    ansible-playbook -i ./applier/inventory galaxy/openshift-applier/playbooks/openshift-cluster-seed.yml
+    ```
 
-## Building the code 
+## Manually Building the Project 
 
-To build the code install `dep`:
-```
-curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-```
+1. To build the project, first install the `dep` tool:
 
-initialize the dependecies:
-```
-dep ensure -vendor-only
-```
-then build the code:
-```
-go build -v -o istio-pod-network-controller cmd/istio-pod-network-controller/main.go
-```
+    ```
+    curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+    ```
+
+2. Retrieve the dependencies:
+
+    ```
+    dep ensure -vendor-only
+    ```
+
+3. Build the project:
+
+    ```
+    go build -v -o istio-pod-network-controller cmd/istio-pod-network-controller/main.go
+    ```

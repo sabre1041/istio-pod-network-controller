@@ -3,24 +3,21 @@ Istio Pod Network Controller
 
 Controller to manage Istio Pod Network
 
-This controller will initialize the pod iptables rules so that the istio proxy will inetrcept the correct connections.
-This controller helps alleviate a security issue of istio. 
-Without this controller, pods in the mesh must be privileged.
-With this controller pods in the mesh can run with much lower privileges. 
-They just have to be able to run with a defined UID which is not root.
-In OpenShift this corresponds moving from the `privileged` scc to the `nonroot` scc.
-The ability to run with a specific uid is required by the stio proxy.
+## Overview
+
+This controller emulates the functionality of the [Istio init proxy](https://github.com/istio/init) to modify the _iptables_ rules so that the [Istio proxy](https://hub.docker.com/r/istio/proxyv2/) sidecar will properly intercept connections.
+
+The primary benefit of this controller is that it helps alleviate a security issue of Istio which requires pods within the mesh to be running as privileged. Instead, privileged actions are performed by the controller instead of pods deployed by regular users. In OpenShift, this avoids the use of the `privileged` [Security Context Constraint](https://docs.openshift.com/container-platform/latest/admin_guide/manage_scc.html) and using a more restrictive policy, such as `restricted`.
 
 ## How this works
 
-This controller is deployed as a daemonset
-Each pod of this Daemonset takes care of the pdos deployed in the respective node.
-Each pod of this daemon watches for newly created pods, if they belongs to the istio mesh, it configures the iptables of the pod so to make it join the mesh.
-It then marks the pods as initialized with an annotation.
+This controller is deployed as a [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/) that runs on each node. Each pod deployed by the DaemonSet takes on the responsibility of managing the pods that are deployed on the respective nodes the controller is deployed on.
 
-You can find instrictions on how to build this project [here](./build.md)
+As new pods that are to be added to the Istio mesh are created, the controller modifies iptables rules on the nodes so that the pod is able to join the mesh. Finally, the controller annotates the pod indicating that it has been successfully initialized. 
 
 ## Installation
+
+Use the following steps to Install Istio and the controller
 
 ### Install istio
 
@@ -47,8 +44,11 @@ oc expose svc tracing -n istio-system
 ```
 
 ### Install istio-pod-network-controller
-The istio-pod-network-controller will be installed in the istio-system namespace together with the other istio components
-to install the istio-pod-network-controller run the following commands
+
+The _istio-pod-network-controller_ is to be installed in the `istio-system` namespace along with with the other istio components
+
+To install the _istio-pod-network-controller_, execute the following commands:
+
 ```
 oc process -f applier/templates/policies.yml NAMESPACE=istio-system | oc apply -f -
 oc adm policy add-scc-to-user privileged -z istio-pod-network-controller -n istio-system
@@ -57,16 +57,18 @@ oc delete cm istio-sidecar-injector -n istio-system
 oc create configmap istio-sidecar-injector --from-file=config=applier/templates/istio-sidecar-injector.txt -n istio-system
 ```
 
-Note that we are configuring the controller to only scan for pods in the `bookinfo` namespace.
-Also note that we have modified the side car injection config map to not inject the initcontainer which is the one that requires privileged access.
+Take note that the controller is managing pods that are deployed in the `bookinfo` namespace as noted by he `INCLUDE_NAMESPACES` parameter of the template. This will  configure an environment in the resulting DaemonSet.
 
-## Testing with the bookinfo app
+In addition, the default side car injection ConfigMap has been modified to remove the execution normally performed by the initcontainer which is by the `istioctl` tool or automatic injection process to not inject the initcontainer that typically requires privileged access.
 
-We are going to test the istio-pod-network-controller with the classic bookinfo app.
+## Testing with the bookinfo Application
+
+To demonstrate the functionality of the `istio-pod-network-controller`, let's use he classic bookinfo application.
 
 ### Testing with manual sidecar injection
 
-Run the following commands:
+Execute the following commands:
+
 ```
 oc new-project bookinfo
 oc adm policy add-scc-to-user anyuid -z default -n bookinfo
@@ -74,11 +76,9 @@ oc apply -f <(istioctl kube-inject -f applier/templates/bookinfo.yaml) -n bookin
 oc expose svc productpage -n bookinfo
 ```
 
-At this point the pods should deploy correclty and should participate to the istio mesh.
+### Testing with automatic sidecar injection (not currently working in OpenShift) 
 
-### Testing with automatic sidecar injection (not working in OpenShift) 
-
-Run the following commands:
+Execute the following commands:
 ```
 oc new-project bookinfo
 oc label namespace bookinfo istio-injection=enabled
@@ -86,5 +86,8 @@ oc adm policy add-scc-to-user anyuid -z default -n bookinfo
 oc apply -f applier/templates/bookinfo.yaml -n bookinfo
 ```
 
-At this point the pods should deploy correclty and should participate to the istio mesh.
+Regardless of the method of injection, the pods should have deployed successfully and participate in the Istio service mesh.
 
+## Building
+
+Instructions for building this project can be found [here](./build.md)
