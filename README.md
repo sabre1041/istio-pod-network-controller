@@ -7,7 +7,7 @@ Controller to manage Istio Pod Network
 
 This controller emulates the functionality of the [Istio init proxy](https://github.com/istio/init) to modify the _iptables_ rules so that the [Istio proxy](https://hub.docker.com/r/istio/proxyv2/) sidecar will properly intercept connections.
 
-The primary benefit of this controller is that it helps alleviate a security issue of Istio which requires pods within the mesh to be running as privileged. Instead, privileged actions are performed by the controller instead of pods deployed by regular users. In OpenShift, this avoids the use of the `privileged` [Security Context Constraint](https://docs.openshift.com/container-platform/latest/admin_guide/manage_scc.html) and using a more restrictive policy, such as `restricted`.
+The primary benefit of this controller is that it helps alleviate a security issue of Istio which requires pods within the mesh to be running as privileged. Instead, privileged actions are performed by the controller instead of pods deployed by regular users. In OpenShift, this avoids the use of the `privileged` [Security Context Constraint](https://docs.openshift.com/container-platform/latest/admin_guide/manage_scc.html) and using a more restrictive policy, such as `nonroot`.
 
 ## How this works
 
