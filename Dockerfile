@@ -12,7 +12,7 @@ ENV GOPATH=/opt/app-root/go \
 ADD . /opt/app-root/go/src/github.com/sabre1041/istio-pod-network-controller
 
 RUN yum repolist > /dev/null && \
-#    yum-config-manager --enable rhel-7-server-optional-rpms --enable rhel-7-server-extras-rpms && \
+    yum-config-manager --enable rhel-7-server-optional-rpms --enable rhel-7-server-extras-rpms && \
     yum clean all && \
     INSTALL_PKGS="golang iptables iproute git" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \

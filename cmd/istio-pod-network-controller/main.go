@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	initial "github.com/sabre1041/istio-pod-network-controller/cmd/istio-pod-network-controller/init"
 	"github.com/sabre1041/istio-pod-network-controller/cmd/istio-pod-network-controller/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -59,6 +60,7 @@ func newRootCmd() *cobra.Command {
 	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
 
 	rootCmd.AddCommand(run.NewRunCmd())
+	rootCmd.AddCommand(initial.NewInitCmd())
 
 	return rootCmd
 
