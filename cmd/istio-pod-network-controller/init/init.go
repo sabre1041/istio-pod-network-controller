@@ -37,9 +37,9 @@ func NewInitCmd() *cobra.Command {
 		Run:   initFunc,
 	}
 
-	initCmd.Flags().String("file", getDefaultFileNameProperty(), "Location of the file containing Pod Annotations")
-	initCmd.Flags().String("annotation-key", getDefaultPodAnnotationKeyProperty(), "Name of the Annotation Key to Wait For")
-	initCmd.Flags().String("annotation-value", getDefaultPodAnnotationValueProperty(), "Name of the Annotation Value to Wait For")
+	initCmd.Flags().String("file", initial.PodAnnotationsFileName, "Location of the file containing Pod Annotations")
+	initCmd.Flags().String("annotation-key", initial.PodAnnotationsKeyName, "Name of the Annotation Key to Wait For")
+	initCmd.Flags().String("annotation-value", initial.PodAnnotationsValueName, "Name of the Annotation Value to Wait For")
 
 	viper.BindPFlag("file", initCmd.Flags().Lookup("file"))
 	viper.BindPFlag("annotation-key", initCmd.Flags().Lookup("annotation-key"))
@@ -81,34 +81,4 @@ func initFunc(cmd *cobra.Command, args []string) {
 
 	logrus.Printf("Completed Initialization Successfully")
 
-}
-
-func getDefaultFileNameProperty() string {
-	fileProperty := os.Getenv("FILE")
-
-	if fileProperty == "" {
-		fileProperty = initial.PodAnnotationsFileName
-	}
-
-	return fileProperty
-}
-
-func getDefaultPodAnnotationKeyProperty() string {
-	annotationKeyProperty := os.Getenv("ANNOTATION_KEY")
-
-	if annotationKeyProperty == "" {
-		annotationKeyProperty = initial.PodAnnotationsKeyName
-	}
-
-	return annotationKeyProperty
-}
-
-func getDefaultPodAnnotationValueProperty() string {
-	annotationValueProperty := os.Getenv("ANNOTATION_VALUE")
-
-	if annotationValueProperty == "" {
-		annotationValueProperty = initial.PodAnnotationsValueName
-	}
-
-	return annotationValueProperty
 }
