@@ -15,9 +15,19 @@
 package run
 
 import (
+<<<<<<< HEAD
 	"context"
 	"fmt"
 	"os/exec"
+=======
+	"fmt"
+	"os/exec"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"context"
+>>>>>>> initial work to support crio
 	"runtime"
 
 	"github.com/docker/docker/client"
@@ -30,6 +40,7 @@ import (
 )
 
 var log = logrus.New()
+var ContainerRuntime string
 
 func initLog() {
 	var err error
@@ -104,6 +115,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+
 
 	log.Infof("Managing Pods Running on Node: %s", viper.GetString("node-name"))
 	sdk.Watch("v1", "Pod", "", 0)
