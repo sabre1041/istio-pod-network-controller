@@ -15,11 +15,13 @@
 package run
 
 import (
+	"fmt"
+	"os/exec"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"context"
-	"os"
 	"runtime"
 
 	"github.com/docker/docker/client"
@@ -30,6 +32,7 @@ import (
 )
 
 var log = logrus.New()
+var ContainerRuntime string
 
 func NewRunCmd() *cobra.Command {
 
@@ -52,21 +55,13 @@ func NewRunCmd() *cobra.Command {
 	runCmd.Flags().String("enable-inbound-ipv6", "false", "whether inbound ipv6 connection should be managed by the mesh (currently is must be set to false)")
 	runCmd.Flags().String("envoy-port", "15001", "Specify the envoy port to which redirect all TCP traffic. This is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.EnvoyPortAnnotation)
 	runCmd.Flags().String("istio-inbound-interception-mode", "REDIRECT", "The mode used to redirect inbound connections to Envoy, either REDIRECT or TPROXY. his is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.InterceptModeAnnotation)
-	//runCmd.Flags().String("istio-include-inbound-ports", "", "comma-separated list of ports that will be redirected to Envoy. This list will be added to the ports desumed from the service controlling the pod. The wildcard character \"*\" can be used to configure redirection for all ports. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.IncludePortsAnnotation)
-	//runCmd.Flags().String("istio-exclude-inbound-ports", "", "Comma separated list of inbound ports to be excluded from redirection to Envoy (optional). Only applies when all inbound traffic (i.e. \"*\") is being redirected. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.ExcludePortsAnnotation)
-	//runCmd.Flags().String("istio-include-outbound-cidrs", "*", "Comma separated list of IP ranges in CIDR form to redirect to envoy (optional). The wildcardcharacter \"*\" can be used to redirect all outbound traffic. An empty list will disable all outbound redirection. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.IncludeCidrsAnnotation)
-	//runCmd.Flags().String("istio-exclude-outbound-cidrs", "", "Comma separated list of IP ranges in CIDR form to be excluded from redirection. Only applies when all outbound traffic (i.e. \"*\") is being redirected. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.ExcludeCidrsAnnotation)
-	//runCmd.Flags().String("envoy-userid", "1337", "UID used by the envoy-proxy container. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.EnvoyUseridAnnotation)
-	//runCmd.Flags().String("envoy-groupid", "1337", "GID used by the envoy-proxy container. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.EnvoyGroupidAnnotation)
+	runCmd.Flags().String("container-runtime", "docker", "container runtime, suppported values are: 'docker' and 'crio'")
+	runCmd.Flags().String("node-name", "", "the node that should be monitored, pass this with the downward API")
 	viper.BindPFlag("enable-inbound-ipv6", runCmd.Flags().Lookup("enable-inbound-ipv6"))
 	viper.BindPFlag("envoy-port", runCmd.Flags().Lookup("envoy-port"))
 	viper.BindPFlag("istio-inbound-interception-mode", runCmd.Flags().Lookup("istio-inbound-interception-mode"))
-	//viper.BindPFlag("istio-include-inbound-ports", runCmd.Flags().Lookup("istio-include-inbound-ports"))
-	//viper.BindPFlag("istio-exclude-inbound-ports", runCmd.Flags().Lookup("istio-exclude-inbound-ports"))
-	//viper.BindPFlag("istio-include-outbound-cidrs", runCmd.Flags().Lookup("istio-include-outbound-cidrs"))
-	//viper.BindPFlag("istio-exclude-outbound-cidrs", runCmd.Flags().Lookup("istio-exclude-outbound-cidrs"))
-	//viper.BindPFlag("envoy-userid", runCmd.Flags().Lookup("envoy-userid"))
-	//viper.BindPFlag("envoy-groupid", runCmd.Flags().Lookup("envoy-groupid"))
+	viper.BindPFlag("container-runtime", runCmd.Flags().Lookup("container-runtime"))
+	viper.BindPFlag("node-name", runCmd.Flags().Lookup("node-name"))
 
 	return runCmd
 
@@ -91,9 +86,17 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	printVersion()
 
-	nodeName := os.Getenv("NODE_NAME")
+	if "crio" == viper.GetString("container-runtime") {
+		out, err := exec.Command("/bin/bash", "-c", "crio config | grep \"^runtime .*\" | awk '{print $3}' | tr -d '\"' ").CombinedOutput()
+		logrus.Infof("container runtime output: %s", out)
+		if err != nil {
+			logrus.Error("couldn't retrieve container runtime executable: %s", err)
+			return
+		}
+		ContainerRuntime = fmt.Sprintf("%s", out)
+	}
 
-	if nodeName == "" {
+	if "" == viper.GetString("node-name") {
 		logrus.Error("NODE_NAME not defined")
 		return
 	}
@@ -103,8 +106,8 @@ func runFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	logrus.Infof("Managing Pods Running on Node: %s", nodeName)
+	logrus.Infof("Managing Pods Running on Node: %s", viper.GetString("node-name"))
 	sdk.Watch("v1", "Pod", "", 0)
-	sdk.Handle(handler.NewHandler(nodeName, *cli))
+	sdk.Handle(handler.NewHandler(viper.GetString("node-name"), *cli))
 	sdk.Run(context.TODO())
 }

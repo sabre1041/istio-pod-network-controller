@@ -11,9 +11,11 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/sabre1041/istio-pod-network-controller/cmd/istio-pod-network-controller/run"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -74,7 +76,15 @@ func markPodAsInitialized(pod *corev1.Pod) error {
 	return err
 }
 
-func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
+func getPidCrio(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
+	//retrieve the contaienr id from the pod id (crictl inspectp)
+	out, err := exec.Command("/bin/bash", "-c", run.ContainerRuntime+" inspect").CombinedOutput()
+
+	//retrieve the container pid from the container id (runc state)
+	out, err := exec.Command("/bin/bash", "-c", run.ContainerRuntime+" state "+containerID+" | grep pid | awk '{print $2}' | tr -d ,").CombinedOutput()
+}
+
+func getPidDcoker(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
 
 	dockerCtx, cancelFn := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancelFn()
