@@ -49,10 +49,6 @@ func NewRunCmd() *cobra.Command {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	runCmd.Flags().String("include-namespaces", "", "comma-separated list of namespace that should be considered (ex: namespace1,namespace2,namespace3).")
-	runCmd.Flags().String("include-namespaces-regexp", "", "regular expression that identifies manespaces that shoul be considered ((not implemented yet).")
-	runCmd.Flags().String("exclude-namespaces", "", "comma-separated list of namespaces that should not be considered (ex: namespace1,namespace2,namespace3).")
-	runCmd.Flags().String("exclude-namespaces-regexp", "", "regular expression that identifies namespaces that should not be considered (not implemented yet).")
 	runCmd.Flags().String("enable-inbound-ipv6", "false", "whether inbound ipv6 connection should be managed by the mesh (currently is must be set to false)")
 	runCmd.Flags().String("envoy-port", "15001", "Specify the envoy port to which redirect all TCP traffic. This is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.EnvoyPortAnnotation)
 	runCmd.Flags().String("istio-inbound-interception-mode", "REDIRECT", "The mode used to redirect inbound connections to Envoy, either REDIRECT or TPROXY. his is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.InterceptModeAnnotation)
@@ -62,10 +58,6 @@ func NewRunCmd() *cobra.Command {
 	//runCmd.Flags().String("istio-exclude-outbound-cidrs", "", "Comma separated list of IP ranges in CIDR form to be excluded from redirection. Only applies when all outbound traffic (i.e. \"*\") is being redirected. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.ExcludeCidrsAnnotation)
 	//runCmd.Flags().String("envoy-userid", "1337", "UID used by the envoy-proxy container. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.EnvoyUseridAnnotation)
 	//runCmd.Flags().String("envoy-groupid", "1337", "GID used by the envoy-proxy container. This is a cluster-wide settings, you can override it by adding this annotation to your pods "+run.EnvoyGroupidAnnotation)
-	viper.BindPFlag("include-namespaces", runCmd.Flags().Lookup("include-namespaces"))
-	viper.BindPFlag("include-namespaces-regexp", runCmd.Flags().Lookup("include-namespaces-regexp"))
-	viper.BindPFlag("exclude-namespaces", runCmd.Flags().Lookup("exclude-namespaces"))
-	viper.BindPFlag("exclude-namespaces-regexp", runCmd.Flags().Lookup("exclude-namespaces-regexp"))
 	viper.BindPFlag("enable-inbound-ipv6", runCmd.Flags().Lookup("enable-inbound-ipv6"))
 	viper.BindPFlag("envoy-port", runCmd.Flags().Lookup("envoy-port"))
 	viper.BindPFlag("istio-inbound-interception-mode", runCmd.Flags().Lookup("istio-inbound-interception-mode"))

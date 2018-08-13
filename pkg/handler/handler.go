@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -11,10 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
-	"os/exec"
-	"sort"
-	"strings"
-	"time"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const EnvoyProxyUserID = "1337"
@@ -26,19 +26,16 @@ const IncludeCidrsAnnotation = "traffic.sidecar.istio.io/includeOutboundIPRanges
 const ExcludeCidrsAnnotation = "traffic.sidecar.istio.io/excludeOutboundIPRanges"
 const EnvoyUseridAnnotation = "pod-network-controller.istio.io/envoy-userid"
 const EnvoyGroupidAnnotation = "pod-network-controller.istio.io/envoy-groupid"
-
-var sortedIncludeNamespaces []string
-var sortedExcludeNamespaces []string
+const TargetedPodAnnotation = "istio-pod-network-controller/initialize"
+const TargetedPodAnnotationValue = "true"
+const PodNetworkControllerAnnotation = "pod-network-controller.istio.io/status"
+const PodNetworkControllerAnnotationInitialized = "initialized"
+const DeployerPodAnnotation = "openshift.io/deployer-pod-for.name"
+const BuildPodAnnotation = "openshift.io/build.name"
 
 var defaultTimeout = 10 * time.Second
 
 func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
-	sortedIncludeNamespaces = strings.Split(viper.GetString("include-namespaces"), ",")
-	sort.Strings(sortedIncludeNamespaces)
-	sortedExcludeNamespaces = strings.Split(viper.GetString("exclude-namespaces"), ",")
-	sort.Strings(sortedExcludeNamespaces)
-	logrus.Infof("Checking the following namespaces: %s", sortedIncludeNamespaces)
-	logrus.Infof("Excluding the following namespaces: %s", sortedExcludeNamespaces)
 	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
 }
 
@@ -72,7 +69,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 
 func markPodAsInitialized(pod *corev1.Pod) error {
 	updatedPod := pod.DeepCopy()
-	updatedPod.ObjectMeta.Annotations["pod-network-controller.istio.io/status"] = "initialized"
+	updatedPod.ObjectMeta.Annotations[PodNetworkControllerAnnotation] = PodNetworkControllerAnnotationInitialized
 	err := sdk.Update(updatedPod)
 	return err
 }
@@ -110,47 +107,58 @@ func getPid(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
 }
 
 func filterPod(pod *corev1.Pod) bool {
+
 	// filter by state
 	if pod.Status.Phase != "Running" && pod.Status.Phase != "Pending" {
-		logrus.Infof("Pod %s terminated, ignoring", pod.ObjectMeta.Name)
+		logrus.Debugf("Pod %s terminated, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
-	// filter by whether the pod belongs to the mesh
-	// not sure how to do it right now.
 
 	// make sure the pod if not a deployer pod
-	if _, ok := pod.ObjectMeta.Labels["openshift.io/deployer-pod-for.name"]; ok {
-		logrus.Infof("Pod %s is a deployer, ignoring", pod.ObjectMeta.Name)
+	if _, ok := pod.ObjectMeta.Labels[DeployerPodAnnotation]; ok {
+		logrus.Debugf("Pod %s is a deployer, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
 	// make sure the pod if not a build pod
-	if _, ok := pod.ObjectMeta.Labels["openshift.io/build.name"]; ok {
-		logrus.Infof("Pod %s is a builder, ignoring", pod.ObjectMeta.Name)
-		return false
-	}
-
-	//filter by opted in namespaces
-	//	namespaces := []string{"tutorial"}
-	//	sort.Strings(namespaces)
-	i := sort.SearchStrings(sortedExcludeNamespaces, pod.ObjectMeta.Namespace)
-	if i < len(sortedExcludeNamespaces) && sortedExcludeNamespaces[i] == pod.ObjectMeta.Namespace {
-		logrus.Infof("Pod %s not in excluded namespaces, ignoring", pod.ObjectMeta.Name)
-		return false
-	}
-
-	i = sort.SearchStrings(sortedIncludeNamespaces, pod.ObjectMeta.Namespace)
-	if !(i < len(sortedIncludeNamespaces) && sortedIncludeNamespaces[i] == pod.ObjectMeta.Namespace) {
-		logrus.Infof("Pod %s not in considered namespaces, ignoring", pod.ObjectMeta.Name)
+	if _, ok := pod.ObjectMeta.Labels[BuildPodAnnotation]; ok {
+		logrus.Debugf("Pod %s is a builder, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
 	// filter by being already initialized
-	if "initialized" == pod.ObjectMeta.Annotations["pod-network-controller.istio.io/status"] {
+	if PodNetworkControllerAnnotationInitialized == pod.ObjectMeta.Annotations[PodNetworkControllerAnnotation] {
 		logrus.Infof("Pod %s previously initialized, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
-	return true
+
+	// Check if Pod Annotated for Injection
+	if TargetedPodAnnotationValue == pod.ObjectMeta.Annotations[TargetedPodAnnotation] {
+		return true
+	}
+
+	// Check if Namespace Annotated for Injection
+	namespace := &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: pod.ObjectMeta.Namespace,
+		},
+	}
+
+	err := sdk.Get(namespace)
+
+	if err != nil {
+		logrus.Errorf("Failed to namespace for pod : %v", err)
+	}
+
+	if TargetedPodAnnotationValue == namespace.ObjectMeta.Annotations[TargetedPodAnnotation] {
+		return true
+	}
+
+	return false
 }
 
 func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
