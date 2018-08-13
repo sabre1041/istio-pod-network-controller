@@ -1,5 +1,15 @@
 policy: enabled
 template: |-
+  
+  initContainers:
+  - name: istio-init
+    image: quay.io/raffaelespazzoli/istio-pod-network-controller:latest
+    args: 
+    - init
+    volumeMounts:
+    - mountPath: /etc/podinfo
+      name: podinfo
+
   containers:
   - name: istio-proxy
     image: [[ if (isset .ObjectMeta.Annotations "sidecar.istio.io/proxyImage") -]]
@@ -86,7 +96,14 @@ template: |-
     - mountPath: /etc/certs/
       name: istio-certs
       readOnly: true
+  
   volumes:
+  - name: podinfo
+    downwardAPI:
+      items:
+      - path: "pod_annotations"
+        fieldRef:
+          fieldPath: metadata.annotations   
   - emptyDir:
       medium: Memory
     name: istio-envoy
@@ -97,4 +114,4 @@ template: |-
       secretName: istio.default
       [[ else -]]
       secretName: [[ printf "istio.%s" .Spec.ServiceAccountName ]]
-      [[ end -]]
+      [[ end -]]     

@@ -50,9 +50,9 @@ The _istio-pod-network-controller_ is to be installed in the `istio-system` name
 To install the _istio-pod-network-controller_, execute the following commands:
 
 ```
-oc process -f applier/templates/policies.yml NAMESPACE=istio-system | oc apply -f -
+oc process -f applier/templates/policies.yml NAMESPACE=istio-system -n istio-system | oc apply -f - -n istio-system
 oc adm policy add-scc-to-user privileged -z istio-pod-network-controller -n istio-system
-oc process -f applier/templates/istio-pod-network-controller-daemonset.yml INCLUDE_NAMESPACES=bookinfo  IMAGE=quay.io/raffaelespazzoli/istio-pod-network-controller:latest | oc apply -f - -n istio-system
+oc process -f applier/templates/istio-pod-network-controller-daemonset.yml INCLUDE_NAMESPACES=bookinfo  IMAGE=quay.io/raffaelespazzoli/istio-pod-network-controller:latest -n istio-system | oc apply -f - -n istio-system
 oc delete cm istio-sidecar-injector -n istio-system
 oc create configmap istio-sidecar-injector --from-file=config=applier/templates/istio-sidecar-injector.txt -n istio-system
 ```
