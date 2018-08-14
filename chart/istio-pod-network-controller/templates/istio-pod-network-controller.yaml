@@ -1,0 +1,228 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+---
+apiVersion: v1
+kind: ClusterRole
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}  
+rules:
+- apiGroups:
+  - ""
+  attributeRestrictions: null
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}  
+roleRef:
+  name: {{ .Chart.Name }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  name: {{ template "istio-pod-network-controller.fullname" . }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "istio-pod-network-controller.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+      app: {{ template "istio-pod-network-controller.name" . }}
+      release: {{ .Release.Name }}
+      name: {{ template "istio-pod-network-controller.fullname" . }}
+    spec:
+      containers:
+      - env:
+        - name: INCLUDE_NAMESPACES
+          value: {{ .Values.includeNamespaces }}        
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        args:
+        - 'run'            
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: {{ .Chart.Name }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: docker
+          mountPath: /var/run/docker.sock                      
+      serviceAccountName: {{ .Values.serviceAccount }}
+      hostPID: true
+      volumes:
+      - name: docker
+        hostPath: 
+          path: /var/run/docker.sock
+          type: Socket
+---
+apiVersion: v1
+data:
+  config: |-
+    policy: enabled
+    template: |-
+      
+      initContainers:
+      - name: istio-init
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args: 
+        - init
+        volumeMounts:
+        - mountPath: /etc/podinfo
+          name: podinfo
+
+      containers:
+      - name: istio-proxy
+        image: [[ if (isset .ObjectMeta.Annotations "sidecar.istio.io/proxyImage") -]]
+        "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyImage" ]]"
+        [[ else -]]
+        gcr.io/istio-release/proxyv2:1.0.0
+        [[ end -]]
+        args:
+        - proxy
+        - sidecar
+        - --configPath
+        - [[ .ProxyConfig.ConfigPath ]]
+        - --binaryPath
+        - [[ .ProxyConfig.BinaryPath ]]
+        - --serviceCluster
+        [[ if ne "" (index .ObjectMeta.Labels "app") -]]
+        - [[ index .ObjectMeta.Labels "app" ]]
+        [[ else -]]
+        - "istio-proxy"
+        [[ end -]]
+        - --drainDuration
+        - [[ formatDuration .ProxyConfig.DrainDuration ]]
+        - --parentShutdownDuration
+        - [[ formatDuration .ProxyConfig.ParentShutdownDuration ]]
+        - --discoveryAddress
+        - [[ .ProxyConfig.DiscoveryAddress ]]
+        - --discoveryRefreshDelay
+        - [[ formatDuration .ProxyConfig.DiscoveryRefreshDelay ]]
+        - --zipkinAddress
+        - [[ .ProxyConfig.ZipkinAddress ]]
+        - --connectTimeout
+        - [[ formatDuration .ProxyConfig.ConnectTimeout ]]
+        - --statsdUdpAddress
+        - [[ .ProxyConfig.StatsdUdpAddress ]]
+        - --proxyAdminPort
+        - [[ .ProxyConfig.ProxyAdminPort ]]
+        - --controlPlaneAuthPolicy
+        - [[ or (index .ObjectMeta.Annotations "sidecar.istio.io/controlPlaneAuthPolicy") .ProxyConfig.ControlPlaneAuthPolicy ]]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: INSTANCE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: ISTIO_META_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ISTIO_META_INTERCEPTION_MODE
+          value: [[ or (index .ObjectMeta.Annotations "sidecar.istio.io/interceptionMode") .ProxyConfig.InterceptionMode.String ]]
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: true
+          [[ if eq (or (index .ObjectMeta.Annotations "sidecar.istio.io/interceptionMode") .ProxyConfig.InterceptionMode.String) "TPROXY" -]]
+          capabilities:
+            add:
+            - NET_ADMIN
+          runAsGroup: 1337
+          [[ else -]]
+          runAsUser: 1337
+          [[ end -]]
+        restartPolicy: Always
+        resources:
+          [[ if (isset .ObjectMeta.Annotations "sidecar.istio.io/proxyCPU") -]]
+          requests:
+            cpu: "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyCPU" ]]"
+            memory: "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyMemory" ]]"
+        [[ else -]]
+          requests:
+            cpu: 10m
+          
+        [[ end -]]
+        volumeMounts:
+        - mountPath: /etc/istio/proxy
+          name: istio-envoy
+        - mountPath: /etc/certs/
+          name: istio-certs
+          readOnly: true
+      
+      volumes:
+      - name: podinfo
+        downwardAPI:
+          items:
+          - path: "pod_annotations"
+            fieldRef:
+              fieldPath: metadata.annotations   
+      - emptyDir:
+          medium: Memory
+        name: istio-envoy
+      - name: istio-certs
+        secret:
+          optional: true
+          [[ if eq .Spec.ServiceAccountName "" -]]
+          secretName: istio.default
+          [[ else -]]
+          secretName: [[ printf "istio.%s" .Spec.ServiceAccountName ]]
+          [[ end -]]     
+kind: ConfigMap
+metadata:
+  name: istio-sidecar-injector
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
