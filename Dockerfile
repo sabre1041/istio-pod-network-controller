@@ -25,7 +25,8 @@ RUN yum repolist > /dev/null && \
     go build -o bin/istio-pod-network-controller -v cmd/istio-pod-network-controller/main.go && \
     mv bin/istio-pod-network-controller /usr/local/bin && \
     rm -rf ${GOPATH} && \
-    yum remove -y "golang git" && \
+    REMOVE_PKGS="golang git" && \
+    yum remove -y $REMOVE_PKGS && \
     yum clean all 
 
 
