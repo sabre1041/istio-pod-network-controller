@@ -49,7 +49,11 @@ kubectl apply -f applier/templates/istio-demo.yaml -n istio-system
 
 Run the following to install `istio-pod-network-controller`
 ```
+<<<<<<< HEAD
 helm template -n istio-pod-network-controller ./chart/istio-pod-network-controller | kubectl apply -f -
+=======
+helm template -n istio-pod-network-controller --set includeNamespaces=bookinfo ./chart/istio-pod-network-controller | kubectl apply -f -
+>>>>>>> fixed logging
 ```
 
 ### Testing with automatic sidecar injection 

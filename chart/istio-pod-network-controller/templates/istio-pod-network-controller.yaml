@@ -3,21 +3,15 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .Chart.Name }}
-<<<<<<< HEAD
   namespace: {{ .Values.Namespace }}
-=======
->>>>>>> added helm chart
   labels:
     app: {{ template "istio-pod-network-controller.name" . }}
     chart: {{ template "istio-pod-network-controller.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 ---
-<<<<<<< HEAD
-apiVersion: rbac.authorization.k8s.io/v1
-=======
 apiVersion: v1
->>>>>>> added helm chart
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ .Chart.Name }}
@@ -33,18 +27,11 @@ rules:
   resources:
   - pods
   verbs:
-<<<<<<< HEAD
-=======
-  - create
-  - delete
-  - deletecollection
->>>>>>> added helm chart
   - get
   - list
   - patch
   - update
   - watch
-<<<<<<< HEAD
 - apiGroups:
   - ""
   attributeRestrictions: null
@@ -56,10 +43,6 @@ rules:
   - watch  
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-=======
----
-apiVersion: v1
->>>>>>> added helm chart
 kind: ClusterRoleBinding
 metadata:
   name: {{ .Chart.Name }}
@@ -69,20 +52,13 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}  
 roleRef:
-<<<<<<< HEAD
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-=======
->>>>>>> added helm chart
   name: {{ .Chart.Name }}
 subjects:
 - kind: ServiceAccount
   name: {{ .Chart.Name }}
-<<<<<<< HEAD
-  namespace: {{ .Values.Namespace }}
-=======
   namespace: {{ .Release.Namespace }}
->>>>>>> added helm chart
 ---
 apiVersion: extensions/v1beta1
 kind: DaemonSet
@@ -312,3 +288,4 @@ users:
 volumes:
 - '*'
 {{end}}
+
