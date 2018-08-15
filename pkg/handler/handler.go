@@ -11,11 +11,9 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
-	"github.com/sabre1041/istio-pod-network-controller/cmd/istio-pod-network-controller/run"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,13 +35,14 @@ const BuildPodAnnotation = "openshift.io/build.name"
 
 var defaultTimeout = 10 * time.Second
 
-func NewHandler(nodeName string, dockerClient client.Client) sdk.Handler {
-	return &Handler{nodeName: nodeName, dockerClient: dockerClient}
+func NewHandler(nodeName string, dockerClient client.Client, containerRuntime string) sdk.Handler {
+	return &Handler{nodeName: nodeName, dockerClient: dockerClient, containerRuntime: containerRuntime}
 }
 
 type Handler struct {
-	nodeName     string
-	dockerClient client.Client
+	nodeName         string
+	dockerClient     client.Client
+	containerRuntime string
 }
 
 func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
@@ -53,7 +52,7 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 		// Check to see if pod is running on current node
 		if h.nodeName == o.Spec.NodeName {
 			if filterPod(o) {
-				err := managePod(h, ctx, o)
+				err := h.managePod(ctx, o)
 				if err != nil {
 					logrus.Errorf("Failed to process pod : %v", err)
 					return err
@@ -76,15 +75,38 @@ func markPodAsInitialized(pod *corev1.Pod) error {
 	return err
 }
 
-func getPidCrio(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
-	//retrieve the contaienr id from the pod id (crictl inspectp)
-	out, err := exec.Command("/bin/bash", "-c", run.ContainerRuntime+" inspect").CombinedOutput()
+func (h *Handler) getPid(ctx context.Context, pod *corev1.Pod) (string, error) {
+	if "crio" == viper.GetString("container-runtime") {
+		return h.getPidCrio(ctx, pod)
+	}
+	if "docker" == viper.GetString("container-runtime") {
+		return h.getPidDocker(ctx, pod)
+	}
 
-	//retrieve the container pid from the container id (runc state)
-	out, err := exec.Command("/bin/bash", "-c", run.ContainerRuntime+" state "+containerID+" | grep pid | awk '{print $2}' | tr -d ,").CombinedOutput()
+	return "", errors.New("container runtime not supported: " + viper.GetString("container-runtime"))
 }
 
-func getPidDcoker(h *Handler, ctx context.Context, pod *corev1.Pod) (string, error) {
+func (h *Handler) getPidCrio(ctx context.Context, pod *corev1.Pod) (string, error) {
+	//retrieve the contaienr id from the pod id (crictl inspectp)
+	out, err := exec.Command("/bin/bash", "-c", h.containerRuntime+" inspect").CombinedOutput()
+
+	if err != nil {
+		logrus.Error(err)
+		return "", err
+	}
+
+	//retrieve the container pid from the container id (runc state)
+	out, err = exec.Command("/bin/bash", "-c", h.containerRuntime+" state "+fmt.Sprintf("%s", out)+" | grep pid | awk '{print $2}' | tr -d ,").CombinedOutput()
+
+	if err != nil {
+		logrus.Error(err)
+		return "", err
+	}
+
+	return "", errors.New("not implemented yet")
+}
+
+func (h *Handler) getPidDocker(ctx context.Context, pod *corev1.Pod) (string, error) {
 
 	dockerCtx, cancelFn := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancelFn()
@@ -171,9 +193,9 @@ func filterPod(pod *corev1.Pod) bool {
 	return false
 }
 
-func managePod(h *Handler, ctx context.Context, pod *corev1.Pod) error {
+func (h *Handler) managePod(ctx context.Context, pod *corev1.Pod) error {
 	logrus.Infof("Processing Pod: %s , id %s", pod.ObjectMeta.Name, pod.ObjectMeta.UID)
-	pidID, err := getPid(h, ctx, pod)
+	pidID, err := h.getPid(ctx, pod)
 	if err != nil {
 		logrus.Errorf("Failed to get pidID : %v", err)
 		return err

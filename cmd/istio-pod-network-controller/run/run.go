@@ -27,12 +27,10 @@ import (
 	"github.com/docker/docker/client"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
-	handler "github.com/sabre1041/istio-pod-network-controller/pkg/handler"
 	"github.com/sirupsen/logrus"
 )
 
 var log = logrus.New()
-var ContainerRuntime string
 
 func NewRunCmd() *cobra.Command {
 
@@ -86,6 +84,8 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	printVersion()
 
+	var containerRuntime string
+
 	if "crio" == viper.GetString("container-runtime") {
 		out, err := exec.Command("/bin/bash", "-c", "crio config | grep \"^runtime .*\" | awk '{print $3}' | tr -d '\"' ").CombinedOutput()
 		logrus.Infof("container runtime output: %s", out)
@@ -93,7 +93,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 			logrus.Error("couldn't retrieve container runtime executable: %s", err)
 			return
 		}
-		ContainerRuntime = fmt.Sprintf("%s", out)
+		containerRuntime = fmt.Sprintf("%s", out)
 	}
 
 	if "" == viper.GetString("node-name") {
@@ -108,6 +108,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	logrus.Infof("Managing Pods Running on Node: %s", viper.GetString("node-name"))
 	sdk.Watch("v1", "Pod", "", 0)
-	sdk.Handle(handler.NewHandler(viper.GetString("node-name"), *cli))
+	sdk.Handle(handler.NewHandler(viper.GetString("node-name"), *cli, containerRuntime))
 	sdk.Run(context.TODO())
 }
