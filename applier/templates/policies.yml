@@ -24,9 +24,6 @@ objects:
     resources:
     - pods
     verbs:
-    - create
-    - delete
-    - deletecollection
     - get
     - list
     - patch

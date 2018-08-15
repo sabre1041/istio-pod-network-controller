@@ -1,4 +1,4 @@
-package run
+package handler
 
 import (
 	"context"
@@ -7,11 +7,12 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
-	"github.com/sirupsen/logrus"
+
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +36,18 @@ const BuildPodAnnotation = "openshift.io/build.name"
 
 var defaultTimeout = 10 * time.Second
 
+var log = logrus.New()
+
+func initLog() {
+	var err error
+	log.Level, err = logrus.ParseLevel(viper.GetString("log-level"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
 func NewHandler(nodeName string, dockerClient client.Client, containerRuntime string) sdk.Handler {
+	initLog()
 	return &Handler{nodeName: nodeName, dockerClient: dockerClient, containerRuntime: containerRuntime}
 }
 
@@ -54,12 +66,12 @@ func (h *Handler) Handle(ctx context.Context, event sdk.Event) error {
 			if filterPod(o) {
 				err := h.managePod(ctx, o)
 				if err != nil {
-					logrus.Errorf("Failed to process pod : %v", err)
+					log.Errorf("Failed to process pod : %v", err)
 					return err
 				}
 				err = markPodAsInitialized(o)
 				if err != nil {
-					logrus.Errorf("Failed to process pod : %v", err)
+					log.Errorf("Failed to process pod : %v", err)
 					return err
 				}
 			}
@@ -91,7 +103,7 @@ func (h *Handler) getPidCrio(ctx context.Context, pod *corev1.Pod) (string, erro
 	out, err := exec.Command("/bin/bash", "-c", h.containerRuntime+" inspect").CombinedOutput()
 
 	if err != nil {
-		logrus.Error(err)
+		log.Error(err)
 		return "", err
 	}
 
@@ -99,7 +111,7 @@ func (h *Handler) getPidCrio(ctx context.Context, pod *corev1.Pod) (string, erro
 	out, err = exec.Command("/bin/bash", "-c", h.containerRuntime+" state "+fmt.Sprintf("%s", out)+" | grep pid | awk '{print $2}' | tr -d ,").CombinedOutput()
 
 	if err != nil {
-		logrus.Error(err)
+		log.Error(err)
 		return "", err
 	}
 
@@ -120,7 +132,7 @@ func (h *Handler) getPidDocker(ctx context.Context, pod *corev1.Pod) (string, er
 
 	containers, err := h.dockerClient.ContainerList(dockerCtx, types.ContainerListOptions{Filters: filter})
 	if err != nil {
-		logrus.Error(err)
+		log.Error(err)
 		return "", err
 	}
 
@@ -128,11 +140,11 @@ func (h *Handler) getPidDocker(ctx context.Context, pod *corev1.Pod) (string, er
 		inspect, err := h.dockerClient.ContainerInspect(dockerCtx, containers[0].ID)
 
 		if err != nil {
-			logrus.Error(err)
+			log.Error(err)
 			return "", err
 		}
 
-		logrus.Infof("Pod Namespace: %s - Pod Name: %s - Container PID: %d", podName, podNamespace, inspect.State.Pid)
+		log.Debugf("Pod Namespace: %s - Pod Name: %s - Container PID: %d", podName, podNamespace, inspect.State.Pid)
 		return fmt.Sprintf("%d", inspect.State.Pid), nil
 	}
 	return "", errors.New("unable to find pod main pid")
@@ -142,25 +154,25 @@ func filterPod(pod *corev1.Pod) bool {
 
 	// filter by state
 	if pod.Status.Phase != "Running" && pod.Status.Phase != "Pending" {
-		logrus.Debugf("Pod %s terminated, ignoring", pod.ObjectMeta.Name)
+		log.Debugf("Pod %s terminated, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
 	// make sure the pod if not a deployer pod
 	if _, ok := pod.ObjectMeta.Labels[DeployerPodAnnotation]; ok {
-		logrus.Debugf("Pod %s is a deployer, ignoring", pod.ObjectMeta.Name)
+		log.Debugf("Pod %s is a deployer, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
 	// make sure the pod if not a build pod
 	if _, ok := pod.ObjectMeta.Labels[BuildPodAnnotation]; ok {
-		logrus.Debugf("Pod %s is a builder, ignoring", pod.ObjectMeta.Name)
+		log.Debugf("Pod %s is a builder, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
 	// filter by being already initialized
 	if PodNetworkControllerAnnotationInitialized == pod.ObjectMeta.Annotations[PodNetworkControllerAnnotation] {
-		logrus.Infof("Pod %s previously initialized, ignoring", pod.ObjectMeta.Name)
+		log.Infof("Pod %s previously initialized, ignoring", pod.ObjectMeta.Name)
 		return false
 	}
 
@@ -183,7 +195,7 @@ func filterPod(pod *corev1.Pod) bool {
 	err := sdk.Get(namespace)
 
 	if err != nil {
-		logrus.Errorf("Failed to namespace for pod : %v", err)
+		log.Errorf("Failed to namespace for pod : %v", err)
 	}
 
 	if TargetedPodAnnotationValue == namespace.ObjectMeta.Annotations[TargetedPodAnnotation] {
@@ -194,24 +206,24 @@ func filterPod(pod *corev1.Pod) bool {
 }
 
 func (h *Handler) managePod(ctx context.Context, pod *corev1.Pod) error {
-	logrus.Infof("Processing Pod: %s , id %s", pod.ObjectMeta.Name, pod.ObjectMeta.UID)
+	log.Debugf("Processing Pod: %s , id %s", pod.ObjectMeta.Name, pod.ObjectMeta.UID)
 	pidID, err := h.getPid(ctx, pod)
 	if err != nil {
-		logrus.Errorf("Failed to get pidID : %v", err)
+		log.Errorf("Failed to get pidID : %v", err)
 		return err
 	}
-	logrus.Infof("ose_pod container main process id: %s", pidID)
+	log.Debugf("ose_pod container main process id: %s", pidID)
 	args := []string{"-t", pidID, "-n", "/usr/local/bin/istio-iptables.sh", "-p", getEnvoyPort(pod),
 		"-u", getUserID(pod), "-g", getGroupID(pod), "-m", getInterceptMode(pod), "-b", getIncludedInboundPorts(pod), "-d", getExcludedInboundPorts(pod),
 		"-i", getIncludedOutboundCidrs(pod), "-x", getExcludedOutboundCidrs(pod)}
-	logrus.Infof("excuting ip tables rules with the following arguments: %s", args)
+	log.Debugf("excuting ip tables rules with the following arguments: %s", args)
 	out, err := exec.Command("nsenter", args...).CombinedOutput()
-	logrus.Infof("nsenter output: %s", out)
+	log.Debugf("nsenter output: %s", out)
 	if err != nil {
-		logrus.Errorf("Failed to setup ip tables : %v", err)
+		log.Errorf("Failed to setup ip tables : %v", err)
 		return err
 	}
-	logrus.Infof("ip tables updated with no error")
+	log.Debugf("ip tables updated with no error")
 	return err
 }
 

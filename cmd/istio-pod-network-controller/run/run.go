@@ -31,6 +31,14 @@ import (
 
 var log = logrus.New()
 
+func initLog() {
+	var err error
+	log.Level, err = logrus.ParseLevel(viper.GetString("log-level"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
 func NewRunCmd() *cobra.Command {
 
 	runCmd := &cobra.Command{
@@ -64,18 +72,10 @@ func NewRunCmd() *cobra.Command {
 
 }
 
-func initLog() {
-	var err error
-	log.Level, err = logrus.ParseLevel(viper.GetString("log-level"))
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-
 func printVersion() {
-	logrus.Infof("Go Version: %s", runtime.Version())
-	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
-	logrus.Infof("operator-sdk Version: %v", sdkVersion.Version)
+	log.Infof("Go Version: %s", runtime.Version())
+	log.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
+	log.Infof("operator-sdk Version: %v", sdkVersion.Version)
 }
 
 func runFunc(cmd *cobra.Command, args []string) {
@@ -87,16 +87,16 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	if "crio" == viper.GetString("container-runtime") {
 		out, err := exec.Command("/bin/bash", "-c", "crio config | grep \"^runtime .*\" | awk '{print $3}' | tr -d '\"' ").CombinedOutput()
-		logrus.Infof("container runtime output: %s", out)
+		log.Infof("container runtime output: %s", out)
 		if err != nil {
-			logrus.Error("couldn't retrieve container runtime executable: %s", err)
+			log.Error("couldn't retrieve container runtime executable: %s", err)
 			return
 		}
 		containerRuntime = fmt.Sprintf("%s", out)
 	}
 
 	if "" == viper.GetString("node-name") {
-		logrus.Error("NODE_NAME not defined")
+		log.Error("NODE_NAME not defined")
 		return
 	}
 
@@ -105,7 +105,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	logrus.Infof("Managing Pods Running on Node: %s", viper.GetString("node-name"))
+	log.Infof("Managing Pods Running on Node: %s", viper.GetString("node-name"))
 	sdk.Watch("v1", "Pod", "", 0)
 	sdk.Handle(handler.NewHandler(viper.GetString("node-name"), *cli, containerRuntime))
 	sdk.Run(context.TODO())

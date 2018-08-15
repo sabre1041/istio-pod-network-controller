@@ -2,6 +2,11 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+
+# this property can have two values, Kubernetes or OpenShift
+kubernetesDistribution: Kubernetes
+Namespace: istio-system
+
 image:
   repository: quay.io/raffaelespazzoli/istio-pod-network-controller
   tag: latest
@@ -18,6 +23,9 @@ resources: {}
   # requests:
   #  cpu: 100m
   #  memory: 128Mi
+
+ingress:
+  enabled: false  
 
 nodeSelector: {}
 
