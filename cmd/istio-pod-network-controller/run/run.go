@@ -15,11 +15,7 @@
 package run
 
 import (
-<<<<<<< HEAD
 	"context"
-	"fmt"
-	"os/exec"
-=======
 	"fmt"
 	"os/exec"
 
@@ -27,12 +23,15 @@ import (
 	"github.com/spf13/viper"
 
 	"context"
->>>>>>> initial work to support crio
+	"fmt"
+	"os/exec"
+
 	"runtime"
 
 	"github.com/docker/docker/client"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	handler "github.com/sabre1041/istio-pod-network-controller/pkg/handler"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -113,7 +112,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-
 
 	log.Infof("Managing Pods Running on Node: %s", viper.GetString("node-name"))
 	sdk.Watch("v1", "Pod", "", 0)
