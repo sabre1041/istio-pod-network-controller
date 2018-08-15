@@ -33,14 +33,12 @@ import (
 	"github.com/docker/docker/client"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
-	handler "github.com/sabre1041/istio-pod-network-controller/pkg/handler"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var log = logrus.New()
-var ContainerRuntime string
 
 func initLog() {
 	var err error

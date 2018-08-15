@@ -31,4 +31,5 @@ RUN yum repolist > /dev/null && \
     rm -rf /var/cache/yum
 
 
+
 ENTRYPOINT ["/usr/local/bin/istio-pod-network-controller"]
