@@ -49,7 +49,7 @@ kubectl apply -f applier/templates/istio-demo.yaml -n istio-system
 
 Run the following to install `istio-pod-network-controller`
 ```
-helm template -n istio-pod-network-controller --set includeNamespaces=bookinfo ./chart/istio-pod-network-controller | kubectl apply -f -
+helm template -n istio-pod-network-controller ./chart/istio-pod-network-controller | kubectl apply -f -
 ```
 
 ### Testing with automatic sidecar injection 
@@ -95,16 +95,8 @@ The _istio-pod-network-controller_ is to be installed in the `istio-system` name
 To install the _istio-pod-network-controller_, execute the following commands:
 
 ```
-oc process -f applier/templates/policies.yml NAMESPACE=istio-system -n istio-system | oc apply -f - -n istio-system
-oc adm policy add-scc-to-user privileged -z istio-pod-network-controller -n istio-system
-oc process -f applier/templates/istio-pod-network-controller-daemonset.yml INCLUDE_NAMESPACES=bookinfo  IMAGE=quay.io/raffaelespazzoli/istio-pod-network-controller:latest -n istio-system | oc apply -f - -n istio-system
-oc delete cm istio-sidecar-injector -n istio-system
-oc create configmap istio-sidecar-injector --from-file=config=applier/templates/istio-sidecar-injector.txt -n istio-system
+helm template -n istio-pod-network-controller ./chart/istio-pod-network-controller | oc apply -f -
 ```
-
-Take note that the controller is managing pods that are deployed in the `bookinfo` namespace as noted by he `INCLUDE_NAMESPACES` parameter of the template. This will  configure an environment in the resulting DaemonSet.
-
-In addition, the default side car injection ConfigMap has been modified to remove the execution normally performed by the initcontainer which is by the `istioctl` tool or automatic injection process to not inject the initcontainer that typically requires privileged access.
 
 ## Testing with the bookinfo Application
 
@@ -116,22 +108,11 @@ Execute the following commands:
 
 ```
 oc new-project bookinfo
+oc annotate namespace bookinfo istio-pod-network-controller/initialize=true
 oc adm policy add-scc-to-user anyuid -z default -n bookinfo
 oc apply -f <(istioctl kube-inject -f applier/templates/bookinfo.yaml) -n bookinfo
 oc expose svc productpage -n bookinfo
 ```
-
-### Testing with automatic sidecar injection (not currently working in OpenShift) 
-
-Execute the following commands:
-```
-oc new-project bookinfo
-oc label namespace bookinfo istio-injection=enabled
-oc adm policy add-scc-to-user anyuid -z default -n bookinfo
-oc apply -f applier/templates/bookinfo.yaml -n bookinfo
-```
-
-Regardless of the method of injection, the pods should have deployed successfully and participate in the Istio service mesh.
 
 ## Building
 
