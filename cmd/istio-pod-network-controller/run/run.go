@@ -69,12 +69,14 @@ func NewRunCmd() *cobra.Command {
 	runCmd.Flags().String("envoy-port", "15001", "Specify the envoy port to which redirect all TCP traffic. This is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.EnvoyPortAnnotation)
 	runCmd.Flags().String("istio-inbound-interception-mode", "REDIRECT", "The mode used to redirect inbound connections to Envoy, either REDIRECT or TPROXY. his is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.InterceptModeAnnotation)
 	runCmd.Flags().String("container-runtime", "docker", "container runtime, suppported values are: 'docker' and 'crio'")
+	runCmd.Flags().String("crio-socket", "unix:///var/run/crio/crio.sock", "the socker where the cri server is at")
 	runCmd.Flags().String("node-name", "", "the node that should be monitored, pass this with the downward API")
 	viper.BindPFlag("enable-inbound-ipv6", runCmd.Flags().Lookup("enable-inbound-ipv6"))
 	viper.BindPFlag("envoy-port", runCmd.Flags().Lookup("envoy-port"))
 	viper.BindPFlag("istio-inbound-interception-mode", runCmd.Flags().Lookup("istio-inbound-interception-mode"))
 	viper.BindPFlag("container-runtime", runCmd.Flags().Lookup("container-runtime"))
 	viper.BindPFlag("node-name", runCmd.Flags().Lookup("node-name"))
+	viper.BindPFlag("crio-socket", runCmd.Flags().Lookup("crio-socket"))
 
 	return runCmd
 
