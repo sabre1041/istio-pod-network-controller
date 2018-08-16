@@ -27,7 +27,8 @@ RUN yum repolist > /dev/null && \
     rm -rf ${GOPATH} && \
     REMOVE_PKGS="golang git" && \
     yum remove -y $REMOVE_PKGS && \
-    yum clean all 
+    yum clean all && \
+    rm -rf /var/cache/yum
 
 
 ENTRYPOINT ["/usr/local/bin/istio-pod-network-controller"]

@@ -7,11 +7,11 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
