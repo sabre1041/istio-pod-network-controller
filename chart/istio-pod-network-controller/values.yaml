@@ -7,7 +7,8 @@ kubernetesDistribution: Kubernetes
 Namespace: istio-system
 # this property can have only two values: docker or crio
 containerRuntime: docker
-crioSocket: unix:///var/run/crio/crio.sock
+crioSocket: /var/run/crio/crio.sock
+runcRoot: /run/runc
 
 image:
   repository: quay.io/raffaelespazzoli/istio-pod-network-controller

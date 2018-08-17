@@ -16,15 +16,11 @@ package run
 
 import (
 	"context"
-	"fmt"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"context"
-	"fmt"
-	"os/exec"
 
 	"runtime"
 
@@ -70,6 +66,7 @@ func NewRunCmd() *cobra.Command {
 	runCmd.Flags().String("istio-inbound-interception-mode", "REDIRECT", "The mode used to redirect inbound connections to Envoy, either REDIRECT or TPROXY. his is a cluster-wide setting, you can override it by adding this annotation to your pods "+handler.InterceptModeAnnotation)
 	runCmd.Flags().String("container-runtime", "docker", "container runtime, suppported values are: 'docker' and 'crio'")
 	runCmd.Flags().String("crio-socket", "unix:///var/run/crio/crio.sock", "the socker where the cri server is at")
+	runCmd.Flags().String("runc-root", "/run/runc", "root directory for runc's storage of container state")
 	runCmd.Flags().String("node-name", "", "the node that should be monitored, pass this with the downward API")
 	viper.BindPFlag("enable-inbound-ipv6", runCmd.Flags().Lookup("enable-inbound-ipv6"))
 	viper.BindPFlag("envoy-port", runCmd.Flags().Lookup("envoy-port"))
@@ -77,6 +74,7 @@ func NewRunCmd() *cobra.Command {
 	viper.BindPFlag("container-runtime", runCmd.Flags().Lookup("container-runtime"))
 	viper.BindPFlag("node-name", runCmd.Flags().Lookup("node-name"))
 	viper.BindPFlag("crio-socket", runCmd.Flags().Lookup("crio-socket"))
+	viper.BindPFlag("runc-root", runCmd.Flags().Lookup("runc-root"))
 
 	return runCmd
 
@@ -93,17 +91,17 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	printVersion()
 
-	var containerRuntime string
+	/*	var containerRuntime string
 
-	if "crio" == viper.GetString("container-runtime") {
-		out, err := exec.Command("/bin/bash", "-c", "crio config | grep \"^runtime .*\" | awk '{print $3}' | tr -d '\"' ").CombinedOutput()
-		log.Infof("container runtime output: %s", out)
-		if err != nil {
-			log.Error("couldn't retrieve container runtime executable: %s", err)
-			return
-		}
-		containerRuntime = fmt.Sprintf("%s", out)
-	}
+		if "crio" == viper.GetString("container-runtime") {
+			out, err := exec.Command("/bin/bash", "-c", "crio config | grep \"^runtime .*\" | awk '{print $3}' | tr -d '\"' ").CombinedOutput()
+			log.Infof("container runtime output: %s", out)
+			if err != nil {
+				log.Error("couldn't retrieve container runtime executable: %s", err)
+				return
+			}
+			containerRuntime = fmt.Sprintf("%s", out)
+		}*/
 
 	if "" == viper.GetString("node-name") {
 		log.Error("NODE_NAME not defined")
@@ -117,6 +115,6 @@ func runFunc(cmd *cobra.Command, args []string) {
 
 	log.Infof("Managing Pods Running on Node: %s", viper.GetString("node-name"))
 	sdk.Watch("v1", "Pod", "", 0)
-	sdk.Handle(handler.NewHandler(viper.GetString("node-name"), *cli, containerRuntime))
+	sdk.Handle(handler.NewHandler(viper.GetString("node-name"), *cli, "runc"))
 	sdk.Run(context.TODO())
 }

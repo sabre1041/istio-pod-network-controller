@@ -94,9 +94,7 @@ spec:
         - 'run'
         {{if eq .Values.containerRuntime "crio"}}
         - '--container-runtime'
-        - "{{ Values.containerRuntime }}"
-        - '--crio-socket'
-        - {{ Values.crioSocket }}
+        - "{{ .Values.containerRuntime }}"
         {{ end }}          
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -109,8 +107,10 @@ spec:
           mountPath: /var/run/docker.sock
         {{end}}
         {{if eq .Values.containerRuntime "crio"}}
-        - name: docker
-          mountPath: {{ Values.crioSocket }}
+        - name: crio
+          mountPath: /var/run/crio/crio.sock
+        - name: runc-root
+          mountPath: /run/runc          
         {{end}}                                  
       serviceAccountName: {{ .Chart.Name }}
       hostPID: true
@@ -124,8 +124,12 @@ spec:
       {{if eq .Values.containerRuntime "crio"}}  
       - name: crio
         hostPath: 
-          path: {{ Values.crioSocket }}
+          path: {{ .Values.crioSocket }}
           type: Socket
+      - name: runc-root
+        hostPath: 
+          path: {{ .Values.runcRoot }}
+          type: Directory          
       {{end}}          
 ---
 apiVersion: v1

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -16,8 +17,6 @@ import (
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"encoding/json"
 )
 
 const EnvoyProxyUserID = "1337"
@@ -100,62 +99,30 @@ func (h *Handler) getPid(ctx context.Context, pod *corev1.Pod) (string, error) {
 	return "", errors.New("container runtime not supported: " + viper.GetString("container-runtime"))
 }
 
-type runc_res struct {
-	pid string `json:"pid"`
-}
-
-type inspectp_res struct {
-	status status `json:"status"`
-}
-
-type status struct {
-	id string `json:"status"`
-}
-
 func (h *Handler) getPidCrio(ctx context.Context, pod *corev1.Pod) (string, error) {
 	//retrieve the pod id from the pod kube id and namespace
-	out, err := exec.Command("/bin/bash", "-c crictl -r "+viper.GetString("crio-socket")+" pods | grep "+pod.ObjectMeta.Name+" | grep "+pod.ObjectMeta.Namespace+" | awk '{print $1}'").CombinedOutput()
+	out, err := exec.Command("/bin/bash", "-c", "crictl -r "+viper.GetString("crio-socket")+" pods --name "+pod.ObjectMeta.Name+" --namespace "+pod.ObjectMeta.Namespace+" -q").Output()
 
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
+	podid := strings.Trim(fmt.Sprintf("%s", out), "\n")
+	log.Debugf("pod id: %s", podid)
 
-	//retrive the container id from the pod id
-	out, err = exec.Command("/bin/bash", "-c crictl "+viper.GetString("crio-socket")+" inspectp "+fmt.Sprintf("%s", out)).CombinedOutput()
-
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-
-	var inspectp_res inspectp_res
-
-	err = json.Unmarshal(out, &inspectp_res)
-
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-
+	//in crio the podid seems to be the same as the POD container id
 	//retrieve the container pid from the container id (runc state)
-	out, err = exec.Command("/bin/bash", "-c", h.containerRuntime+" state "+inspectp_res.status.id).CombinedOutput()
+	out, err = exec.Command("/bin/bash", "-c", h.containerRuntime+" --root "+viper.GetString("runc-root")+" state "+podid+" | jq -r .pid").Output()
+	log.Debugf("output: %s", out)
 
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 
-	var runc_res runc_res
-
-	err = json.Unmarshal(out, &runc_res)
-
-	if err != nil {
-		log.Error(err)
-		return "", err
-	}
-
-	return runc_res.pid, nil
+	pid := strings.Trim(fmt.Sprintf("%s", out), "\n")
+	log.Debugf("pid: %s", pid)
+	return pid, nil
 }
 
 func (h *Handler) getPidDocker(ctx context.Context, pod *corev1.Pod) (string, error) {

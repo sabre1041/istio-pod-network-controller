@@ -52,6 +52,11 @@ Run the following to install `istio-pod-network-controller`
 helm template -n istio-pod-network-controller ./chart/istio-pod-network-controller | kubectl apply -f -
 ```
 
+if you are using with crio, run the following
+```
+helm template -n istio-pod-network-controller --ser containerRuntime=crio ./chart/istio-pod-network-controller | kubectl apply -f -
+```
+
 ### Testing with automatic sidecar injection 
 
 Execute the following commands:
