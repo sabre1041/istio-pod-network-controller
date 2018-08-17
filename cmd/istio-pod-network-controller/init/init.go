@@ -28,6 +28,14 @@ import (
 
 var log = logrus.New()
 
+func initLog() {
+	var err error
+	log.Level, err = logrus.ParseLevel(viper.GetString("log-level"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
 func NewInitCmd() *cobra.Command {
 
 	initCmd := &cobra.Command{
@@ -49,18 +57,10 @@ func NewInitCmd() *cobra.Command {
 
 }
 
-func initLog() {
-	var err error
-	log.Level, err = logrus.ParseLevel(viper.GetString("log-level"))
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-
 func printVersion() {
-	logrus.Infof("Go Version: %s", runtime.Version())
-	logrus.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
-	logrus.Infof("operator-sdk Version: %v", sdkVersion.Version)
+	log.Infof("Go Version: %s", runtime.Version())
+	log.Infof("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH)
+	log.Infof("operator-sdk Version: %v", sdkVersion.Version)
 }
 
 func initFunc(cmd *cobra.Command, args []string) {
@@ -70,15 +70,15 @@ func initFunc(cmd *cobra.Command, args []string) {
 	annotationKey := viper.GetString("annotation-key")
 	annotationValue := viper.GetString("annotation-value")
 
-	logrus.Printf("Waiting for Initialized Pod Annotation (%s=%s)", annotationKey, annotationValue)
+	log.Printf("Waiting for Initialized Pod Annotation (%s=%s)", annotationKey, annotationValue)
 
 	err := initial.WaitForAnnotationInFile(file, annotationKey, annotationValue)
 
 	if err != nil {
-		logrus.Errorf("Error occurred waiting for pod annotation in file: %v", err)
+		log.Errorf("Error occurred waiting for pod annotation in file: %v", err)
 		os.Exit(1)
 	}
 
-	logrus.Printf("Completed Initialization Successfully")
+	log.Printf("Completed Initialization Successfully")
 
 }

@@ -17,7 +17,6 @@ RUN yum repolist > /dev/null && \
     INSTALL_PKGS="golang iptables iproute git" && \
     yum install -y --setopt=tsflags=nodocs $INSTALL_PKGS && \
     rpm -V $INSTALL_PKGS && \
-    yum clean all && \
     mkdir -p ${GOPATH}/{bin,src} && \
     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh && \
     cd /opt/app-root/go/src/github.com/sabre1041/istio-pod-network-controller && \
@@ -25,6 +24,11 @@ RUN yum repolist > /dev/null && \
     dep ensure -vendor-only &&\
     go build -o bin/istio-pod-network-controller -v cmd/istio-pod-network-controller/main.go && \
     mv bin/istio-pod-network-controller /usr/local/bin && \
-    rm -rf ${GOPATH}
+    rm -rf ${GOPATH} && \
+    REMOVE_PKGS="golang git" && \
+    yum remove -y $REMOVE_PKGS && \
+    yum clean all && \
+    rm -rf /var/cache/yum
+
 
 ENTRYPOINT ["/usr/local/bin/istio-pod-network-controller"]

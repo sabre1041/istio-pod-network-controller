@@ -1,0 +1,289 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.Namespace }}
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}  
+rules:
+- apiGroups:
+  - ""
+  attributeRestrictions: null
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  attributeRestrictions: null
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch  
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}  
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Chart.Name }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.Namespace }}
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "istio-pod-network-controller.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "istio-pod-network-controller.name" . }}
+        release: {{ .Release.Name }}
+      name: {{ .Chart.Name }}
+    spec:
+      containers:
+      - env:
+        - name: LOG_LEVEL
+          value: {{ .Values.LogLevel | default "info" }}        
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        args:
+        - 'run'            
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: {{ .Chart.Name }}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: docker
+          mountPath: /var/run/docker.sock                      
+      serviceAccountName: {{ .Chart.Name }}
+      hostPID: true
+      volumes:
+      - name: docker
+        hostPath: 
+          path: /var/run/docker.sock
+          type: Socket
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-sidecar-injector
+  namespace: {{ .Values.Namespace }}
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  config: |-
+    policy: enabled
+    template: |-
+      
+      initContainers:
+      - name: istio-init
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args: 
+        - init
+        volumeMounts:
+        - mountPath: /etc/podinfo
+          name: podinfo
+
+      containers:
+      - name: istio-proxy
+        image: [[ if (isset .ObjectMeta.Annotations "sidecar.istio.io/proxyImage") -]]
+        "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyImage" ]]"
+        [[ else -]]
+        gcr.io/istio-release/proxyv2:1.0.0
+        [[ end -]]
+        args:
+        - proxy
+        - sidecar
+        - --configPath
+        - [[ .ProxyConfig.ConfigPath ]]
+        - --binaryPath
+        - [[ .ProxyConfig.BinaryPath ]]
+        - --serviceCluster
+        [[ if ne "" (index .ObjectMeta.Labels "app") -]]
+        - [[ index .ObjectMeta.Labels "app" ]]
+        [[ else -]]
+        - "istio-proxy"
+        [[ end -]]
+        - --drainDuration
+        - [[ formatDuration .ProxyConfig.DrainDuration ]]
+        - --parentShutdownDuration
+        - [[ formatDuration .ProxyConfig.ParentShutdownDuration ]]
+        - --discoveryAddress
+        - [[ .ProxyConfig.DiscoveryAddress ]]
+        - --discoveryRefreshDelay
+        - [[ formatDuration .ProxyConfig.DiscoveryRefreshDelay ]]
+        - --zipkinAddress
+        - [[ .ProxyConfig.ZipkinAddress ]]
+        - --connectTimeout
+        - [[ formatDuration .ProxyConfig.ConnectTimeout ]]
+        - --statsdUdpAddress
+        - [[ .ProxyConfig.StatsdUdpAddress ]]
+        - --proxyAdminPort
+        - [[ .ProxyConfig.ProxyAdminPort ]]
+        - --controlPlaneAuthPolicy
+        - [[ or (index .ObjectMeta.Annotations "sidecar.istio.io/controlPlaneAuthPolicy") .ProxyConfig.ControlPlaneAuthPolicy ]]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: INSTANCE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: ISTIO_META_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ISTIO_META_INTERCEPTION_MODE
+          value: [[ or (index .ObjectMeta.Annotations "sidecar.istio.io/interceptionMode") .ProxyConfig.InterceptionMode.String ]]
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: true
+          [[ if eq (or (index .ObjectMeta.Annotations "sidecar.istio.io/interceptionMode") .ProxyConfig.InterceptionMode.String) "TPROXY" -]]
+          capabilities:
+            add:
+            - NET_ADMIN
+          runAsGroup: 1337
+          [[ else -]]
+          runAsUser: 1337
+          [[ end -]]
+        restartPolicy: Always
+        resources:
+          [[ if (isset .ObjectMeta.Annotations "sidecar.istio.io/proxyCPU") -]]
+          requests:
+            cpu: "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyCPU" ]]"
+            memory: "[[ index .ObjectMeta.Annotations "sidecar.istio.io/proxyMemory" ]]"
+        [[ else -]]
+          requests:
+            cpu: 10m
+          
+        [[ end -]]
+        volumeMounts:
+        - mountPath: /etc/istio/proxy
+          name: istio-envoy
+        - mountPath: /etc/certs/
+          name: istio-certs
+          readOnly: true
+      
+      volumes:
+      - name: podinfo
+        downwardAPI:
+          items:
+          - path: "pod_annotations"
+            fieldRef:
+              fieldPath: metadata.annotations   
+      - emptyDir:
+          medium: Memory
+        name: istio-envoy
+      - name: istio-certs
+        secret:
+          optional: true
+          [[ if eq .Spec.ServiceAccountName "" -]]
+          secretName: istio.default
+          [[ else -]]
+          secretName: [[ printf "istio.%s" .Spec.ServiceAccountName ]]
+          [[ end -]]     
+
+{{if eq .Values.kubernetesDistribution "OpenShift"}}
+---
+apiVersion: v1
+kind: SecurityContextConstraints
+metadata:
+  annotations:
+    kubernetes.io/description: 'privileged allows access to all privileged and host
+      features and the ability to run as any user, any group, any fsGroup, and with
+      any SELinux context.  WARNING: this is the most relaxed SCC and should be
+      used only for cluster administration. Grant with caution.'
+  creationTimestamp: null
+  name: {{ .Chart.Name }}
+  labels:
+  app: {{ template "istio-pod-network-controller.name" . }}
+  chart: {{ template "istio-pod-network-controller.chart" . }}
+  release: {{ .Release.Name }}
+  heritage: {{ .Release.Service }}  
+allowHostDirVolumePlugin: true
+allowHostIPC: true
+allowHostNetwork: true
+allowHostPID: true
+allowHostPorts: true
+allowPrivilegedContainer: true
+allowedCapabilities:
+- '*'
+allowedFlexVolumes: null
+defaultAddCapabilities: null
+fsGroup:
+  type: RunAsAny
+groups:
+- system:cluster-admins
+- system:nodes
+- system:masters
+priority: 8
+readOnlyRootFilesystem: false
+requiredDropCapabilities: null
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+seccompProfiles:
+- '*'
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:serviceaccount:{{ .Values.Namespace }}:{{ .Chart.Name }}
+volumes:
+- '*'
+{{end}}

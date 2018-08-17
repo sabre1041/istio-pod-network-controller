@@ -1,0 +1,7 @@
+This chart deploys the istio-po-network-controller used to initialize the pod iptables configuration to use with istio.
+In order to have your pod initilized add this annotation `istio-pod-network-controller/initialize: true` to either the pod or the namespace:
+For example you can use the following commands: 
+`kubectl label namespace <your namespace> istio-pod-network-controller/initialize=true`
+or
+`kubectl label deployment <your deployment> istio-pod-network-controller/initialize=true`
+
