@@ -58,7 +58,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ .Chart.Name }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.Namespace }}
 ---
 apiVersion: extensions/v1beta1
 kind: DaemonSet

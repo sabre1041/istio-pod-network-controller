@@ -54,7 +54,7 @@ helm template -n istio-pod-network-controller ./chart/istio-pod-network-controll
 
 if you are using with crio, run the following
 ```
-helm template -n istio-pod-network-controller --ser containerRuntime=crio ./chart/istio-pod-network-controller | kubectl apply -f -
+helm template -n istio-pod-network-controller --set containerRuntime=crio ./chart/istio-pod-network-controller | kubectl apply -f -
 ```
 
 ### Testing with automatic sidecar injection 
@@ -109,7 +109,7 @@ The _istio-pod-network-controller_ is to be installed in the `istio-system` name
 To install the _istio-pod-network-controller_, execute the following commands:
 
 ```
-helm template -n istio-pod-network-controller ./chart/istio-pod-network-controller | oc apply -f -
+helm template -n istio-pod-network-controller --set kubernetesDistribution=OpenShift ./chart/istio-pod-network-controller | oc apply -f -
 ```
 
 ## Testing with the bookinfo Application
