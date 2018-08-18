@@ -2,10 +2,13 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-
 # this property can have two values, Kubernetes or OpenShift
 kubernetesDistribution: Kubernetes
 Namespace: istio-system
+# this property can have only two values: docker or crio
+containerRuntime: docker
+crioSocket: /var/run/crio/crio.sock
+runcRoot: /run/runc
 
 image:
   repository: quay.io/raffaelespazzoli/istio-pod-network-controller

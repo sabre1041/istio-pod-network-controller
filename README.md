@@ -19,9 +19,9 @@ Pod will be initialized if the pod's namespace is annotated with `istio-pod-netw
 
 ## Installation on Kubernetes
 
-### Starting Kuebernetes 
+### Starting Kubernetes 
 
-If you don't have a kubrnetes cluster available run this command to start a minikube instance large enough to host istio:
+If you don't have a kubernetes cluster available run this command to start a minikube instance large enough to host istio:
 ```
 minikube start --memory=8192 --cpus=2 --kubernetes-version=v1.10.0 \
     --extra-config=controller-manager.cluster-signing-cert-file="/var/lib/localkube/certs/ca.crt" \
@@ -52,6 +52,11 @@ Run the following to install `istio-pod-network-controller`
 helm template -n istio-pod-network-controller ./chart/istio-pod-network-controller | kubectl apply -f -
 ```
 
+if you are using with crio, run the following
+```
+helm template -n istio-pod-network-controller --set containerRuntime=crio ./chart/istio-pod-network-controller | kubectl apply -f -
+```
+
 ### Testing with automatic sidecar injection 
 
 Execute the following commands:
@@ -63,6 +68,15 @@ kubectl apply -f applier/templates/bookinfo.yaml -n bookinfo
 ```
 
 ## Installation on OpenShift
+
+### Starting OpenShift
+
+If you don't have an OpenShift cluster available run this command to start a minikube instance large enough to host istio:
+```
+minishift start --ocp-tag=v3.9.40 --vm-driver=kvm \
+    --cpus=2 --memory=8192 --skip-registration
+
+```
 
 ### Install istio
 
@@ -95,7 +109,7 @@ The _istio-pod-network-controller_ is to be installed in the `istio-system` name
 To install the _istio-pod-network-controller_, execute the following commands:
 
 ```
-helm template -n istio-pod-network-controller ./chart/istio-pod-network-controller | oc apply -f -
+helm template -n istio-pod-network-controller --set kubernetesDistribution=OpenShift ./chart/istio-pod-network-controller | oc apply -f -
 ```
 
 ## Testing with the bookinfo Application

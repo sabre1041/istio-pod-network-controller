@@ -10,6 +10,7 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 ---
+apiVersion: v1
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -90,22 +91,46 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         args:
-        - 'run'            
+        - 'run'
+        {{if eq .Values.containerRuntime "crio"}}
+        - '--container-runtime'
+        - "{{ .Values.containerRuntime }}"
+        {{ end }}          
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: {{ .Chart.Name }}
         securityContext:
           privileged: true
         volumeMounts:
+        {{if eq .Values.containerRuntime "docker"}}
         - name: docker
-          mountPath: /var/run/docker.sock                      
+          mountPath: /var/run/docker.sock
+        {{end}}
+        {{if eq .Values.containerRuntime "crio"}}
+        - name: crio
+          mountPath: /var/run/crio/crio.sock
+        - name: runc-root
+          mountPath: /run/runc          
+        {{end}}                                  
       serviceAccountName: {{ .Chart.Name }}
       hostPID: true
       volumes:
+      {{if eq .Values.containerRuntime "docker"}}  
       - name: docker
         hostPath: 
           path: /var/run/docker.sock
           type: Socket
+      {{end}} 
+      {{if eq .Values.containerRuntime "crio"}}  
+      - name: crio
+        hostPath: 
+          path: {{ .Values.crioSocket }}
+          type: Socket
+      - name: runc-root
+        hostPath: 
+          path: {{ .Values.runcRoot }}
+          type: Directory          
+      {{end}}          
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -287,3 +312,4 @@ users:
 volumes:
 - '*'
 {{end}}
+

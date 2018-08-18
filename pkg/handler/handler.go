@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -99,23 +100,29 @@ func (h *Handler) getPid(ctx context.Context, pod *corev1.Pod) (string, error) {
 }
 
 func (h *Handler) getPidCrio(ctx context.Context, pod *corev1.Pod) (string, error) {
-	//retrieve the contaienr id from the pod id (crictl inspectp)
-	out, err := exec.Command("/bin/bash", "-c", h.containerRuntime+" inspect").CombinedOutput()
+	//retrieve the pod id from the pod kube id and namespace
+	out, err := exec.Command("/bin/bash", "-c", "crictl -r "+viper.GetString("crio-socket")+" pods --name "+pod.ObjectMeta.Name+" --namespace "+pod.ObjectMeta.Namespace+" -q").Output()
 
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
+	podid := strings.Trim(fmt.Sprintf("%s", out), "\n")
+	log.Debugf("pod id: %s", podid)
 
+	//in crio the podid seems to be the same as the POD container id
 	//retrieve the container pid from the container id (runc state)
-	out, err = exec.Command("/bin/bash", "-c", h.containerRuntime+" state "+fmt.Sprintf("%s", out)+" | grep pid | awk '{print $2}' | tr -d ,").CombinedOutput()
+	out, err = exec.Command("/bin/bash", "-c", h.containerRuntime+" --root "+viper.GetString("runc-root")+" state "+podid+" | jq -r .pid").Output()
+	log.Debugf("output: %s", out)
 
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 
-	return "", errors.New("not implemented yet")
+	pid := strings.Trim(fmt.Sprintf("%s", out), "\n")
+	log.Debugf("pid: %s", pid)
+	return pid, nil
 }
 
 func (h *Handler) getPidDocker(ctx context.Context, pod *corev1.Pod) (string, error) {

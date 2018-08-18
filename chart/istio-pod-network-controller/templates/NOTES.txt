@@ -4,4 +4,3 @@ For example you can use the following commands:
 `kubectl label namespace <your namespace> istio-pod-network-controller/initialize=true`
 or
 `kubectl label deployment <your deployment> istio-pod-network-controller/initialize=true`
-
