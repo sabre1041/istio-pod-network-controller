@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	"github.com/sirupsen/logrus"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -159,27 +160,29 @@ func (h *Handler) getPidDocker(ctx context.Context, pod *corev1.Pod) (string, er
 
 func filterPod(pod *corev1.Pod) bool {
 
+	podNamespaceName, _ := cache.MetaNamespaceKeyFunc(pod)
+
 	// filter by state
 	if pod.Status.Phase != "Running" && pod.Status.Phase != "Pending" {
-		log.Debugf("Pod %s terminated, ignoring", pod.ObjectMeta.Name)
+		log.Debugf("Pod %s terminated, ignoring", podNamespaceName)
 		return false
 	}
 
 	// make sure the pod if not a deployer pod
 	if _, ok := pod.ObjectMeta.Labels[DeployerPodAnnotation]; ok {
-		log.Debugf("Pod %s is a deployer, ignoring", pod.ObjectMeta.Name)
+		log.Debugf("Pod %s is a deployer, ignoring", podNamespaceName)
 		return false
 	}
 
 	// make sure the pod if not a build pod
 	if _, ok := pod.ObjectMeta.Labels[BuildPodAnnotation]; ok {
-		log.Debugf("Pod %s is a builder, ignoring", pod.ObjectMeta.Name)
+		log.Debugf("Pod %s is a builder, ignoring", podNamespaceName)
 		return false
 	}
 
 	// filter by being already initialized
 	if PodNetworkControllerAnnotationInitialized == pod.ObjectMeta.Annotations[PodNetworkControllerAnnotation] {
-		log.Infof("Pod %s previously initialized, ignoring", pod.ObjectMeta.Name)
+		log.Infof("Pod %s previously initialized, ignoring", podNamespaceName)
 		return false
 	}
 

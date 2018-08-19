@@ -17,6 +17,7 @@ package init
 import (
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -48,10 +49,14 @@ func NewInitCmd() *cobra.Command {
 	initCmd.Flags().String("file", initial.PodAnnotationsFileName, "Location of the file containing Pod Annotations")
 	initCmd.Flags().String("annotation-key", initial.PodAnnotationsKeyName, "Name of the Annotation Key to Wait For")
 	initCmd.Flags().String("annotation-value", initial.PodAnnotationsValueName, "Name of the Annotation Value to Wait For")
+	initCmd.Flags().Int("timeout", initial.InitTimeout, "Timeout value waiting for pod annotation")
+	initCmd.Flags().Int("delay", initial.InitDelay, "Amount of time between checking whether pod has been annotated")
 
 	viper.BindPFlag("file", initCmd.Flags().Lookup("file"))
 	viper.BindPFlag("annotation-key", initCmd.Flags().Lookup("annotation-key"))
 	viper.BindPFlag("annotation-value", initCmd.Flags().Lookup("annotation-value"))
+	viper.BindPFlag("timeout", initCmd.Flags().Lookup("timeout"))
+	viper.BindPFlag("delay", initCmd.Flags().Lookup("delay"))
 
 	return initCmd
 
@@ -69,10 +74,12 @@ func initFunc(cmd *cobra.Command, args []string) {
 	file := viper.GetString("file")
 	annotationKey := viper.GetString("annotation-key")
 	annotationValue := viper.GetString("annotation-value")
+	delay := viper.GetInt("delay")
+	timeout := viper.GetInt("timeout")
 
 	log.Printf("Waiting for Initialized Pod Annotation (%s=%s)", annotationKey, annotationValue)
 
-	err := initial.WaitForAnnotationInFile(file, annotationKey, annotationValue)
+	err := initial.WaitForAnnotationInFile(file, annotationKey, annotationValue, time.Duration(timeout)*time.Second, delay)
 
 	if err != nil {
 		log.Errorf("Error occurred waiting for pod annotation in file: %v", err)
