@@ -42,7 +42,7 @@ minikube start --memory=8192 --cpus=2 --kubernetes-version=v1.10.0 \
 Run the following to install `Istio`
 ```
 kubectl create namespace istio-system
-kubectl apply -f applier/templates/istio-demo.yaml -n istio-system
+kubectl apply -f examples/istio-demo.yaml -n istio-system
 ```
 
 ### Install istio-pod-network-controller
@@ -64,7 +64,7 @@ Execute the following commands:
 kubectl create namespace bookinfo
 kubectl label namespace bookinfo istio-injection=enabled
 kubectl annotate namespace bookinfo istio-pod-network-controller/initialize=true
-kubectl apply -f applier/templates/bookinfo.yaml -n bookinfo
+kubectl apply -f examples/bookinfo.yaml -n bookinfo
 ```
 
 ## Installation on OpenShift
@@ -94,7 +94,7 @@ oc adm policy add-scc-to-user anyuid -z istio-mixer-service-account -n istio-sys
 oc adm policy add-scc-to-user anyuid -z istio-pilot-service-account -n istio-system
 oc adm policy add-scc-to-user anyuid -z istio-sidecar-injector-service-account -n istio-system
 oc adm policy add-scc-to-user anyuid -z istio-galley-service-account -n istio-system
-oc apply -f applier/templates/istio-demo.yaml -n istio-system
+oc apply -f examples/istio-demo.yaml -n istio-system
 oc expose svc istio-ingressgateway -n istio-system
 oc expose svc servicegraph -n istio-system
 oc expose svc grafana -n istio-system
@@ -124,7 +124,7 @@ Execute the following commands:
 oc new-project bookinfo
 oc annotate namespace bookinfo istio-pod-network-controller/initialize=true
 oc adm policy add-scc-to-user anyuid -z default -n bookinfo
-oc apply -f <(istioctl kube-inject -f applier/templates/bookinfo.yaml) -n bookinfo
+oc apply -f <(istioctl kube-inject -f examples/bookinfo.yaml) -n bookinfo
 oc expose svc productpage -n bookinfo
 ```
 
