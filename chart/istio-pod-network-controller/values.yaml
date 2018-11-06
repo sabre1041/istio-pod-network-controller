@@ -11,7 +11,7 @@ crioSocket: /var/run/crio/crio.sock
 runcRoot: /run/runc
 
 image:
-  repository: dbenque/istio-pod-network-controller
+  repository: quay.io/raffaelespazzoli/istio-pod-network-controller
   tag: v1
   pullPolicy: IfNotPresent
   runAsUser: 1337
