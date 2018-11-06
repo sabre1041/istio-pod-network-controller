@@ -11,9 +11,10 @@ crioSocket: /var/run/crio/crio.sock
 runcRoot: /run/runc
 
 image:
-  repository: quay.io/raffaelespazzoli/istio-pod-network-controller
-  tag: latest
+  repository: dbenque/istio-pod-network-controller
+  tag: v1
   pullPolicy: IfNotPresent
+  runAsUser: 1337
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

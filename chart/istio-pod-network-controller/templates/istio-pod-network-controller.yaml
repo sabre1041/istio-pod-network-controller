@@ -151,6 +151,8 @@ data:
       - name: istio-init
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          runAsUser: {{ .Values.image.runAsUser }}
         args: 
         - init
         volumeMounts:
