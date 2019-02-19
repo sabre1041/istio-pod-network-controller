@@ -169,13 +169,13 @@ func filterPod(pod *corev1.Pod) bool {
 	}
 
 	// make sure the pod if not a deployer pod
-	if _, ok := pod.ObjectMeta.Labels[DeployerPodAnnotation]; ok {
+	if _, ok := pod.ObjectMeta.Annotations[DeployerPodAnnotation]; ok {
 		log.Debugf("Pod %s is a deployer, ignoring", podNamespaceName)
 		return false
 	}
 
 	// make sure the pod if not a build pod
-	if _, ok := pod.ObjectMeta.Labels[BuildPodAnnotation]; ok {
+	if _, ok := pod.ObjectMeta.Annotations[BuildPodAnnotation]; ok {
 		log.Debugf("Pod %s is a builder, ignoring", podNamespaceName)
 		return false
 	}
@@ -238,7 +238,7 @@ func (h *Handler) managePod(ctx context.Context, pod *corev1.Pod) error {
 }
 
 func getEnvoyPort(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[EnvoyPortAnnotation]; ok {
+	if port, ok := pod.ObjectMeta.Annotations[EnvoyPortAnnotation]; ok {
 		return port
 	} else {
 		return viper.GetString("envoy-port")
@@ -254,7 +254,7 @@ func getGroupID(pod *corev1.Pod) string {
 }
 
 func getInterceptMode(pod *corev1.Pod) string {
-	if interceptMode, ok := pod.ObjectMeta.Labels[InterceptModeAnnotation]; ok {
+	if interceptMode, ok := pod.ObjectMeta.Annotations[InterceptModeAnnotation]; ok {
 		return interceptMode
 	} else {
 		return viper.GetString("istio-inbound-interception-mode")
@@ -262,7 +262,7 @@ func getInterceptMode(pod *corev1.Pod) string {
 }
 
 func getIncludedInboundPorts(pod *corev1.Pod) string {
-	if includePorts, ok := pod.ObjectMeta.Labels[IncludePortsAnnotation]; ok {
+	if includePorts, ok := pod.ObjectMeta.Annotations[IncludePortsAnnotation]; ok {
 		return includePorts
 	} else {
 		ports := ""
@@ -280,7 +280,7 @@ func getPodServicePorts(pod *corev1.Pod) string {
 }
 
 func getExcludedInboundPorts(pod *corev1.Pod) string {
-	if port, ok := pod.ObjectMeta.Labels[ExcludePortsAnnotation]; ok {
+	if port, ok := pod.ObjectMeta.Annotations[ExcludePortsAnnotation]; ok {
 		return port
 	} else {
 		return ""
@@ -288,7 +288,7 @@ func getExcludedInboundPorts(pod *corev1.Pod) string {
 }
 
 func getIncludedOutboundCidrs(pod *corev1.Pod) string {
-	if includeCidrs, ok := pod.ObjectMeta.Labels[IncludeCidrsAnnotation]; ok {
+	if includeCidrs, ok := pod.ObjectMeta.Annotations[IncludeCidrsAnnotation]; ok {
 		return includeCidrs
 	} else {
 		return "*"
@@ -296,7 +296,7 @@ func getIncludedOutboundCidrs(pod *corev1.Pod) string {
 }
 
 func getExcludedOutboundCidrs(pod *corev1.Pod) string {
-	if excludeCidrs, ok := pod.ObjectMeta.Labels[ExcludeCidrsAnnotation]; ok {
+	if excludeCidrs, ok := pod.ObjectMeta.Annotations[ExcludeCidrsAnnotation]; ok {
 		return excludeCidrs
 	} else {
 		return ""
