@@ -283,7 +283,7 @@ func getExcludedInboundPorts(pod *corev1.Pod) string {
 	if port, ok := pod.ObjectMeta.Labels[ExcludePortsAnnotation]; ok {
 		return port
 	} else {
-		return ""
+		return viper.GetString("istio-exclude-inbound-ports")
 	}
 }
 
@@ -291,7 +291,7 @@ func getIncludedOutboundCidrs(pod *corev1.Pod) string {
 	if includeCidrs, ok := pod.ObjectMeta.Labels[IncludeCidrsAnnotation]; ok {
 		return includeCidrs
 	} else {
-		return "*"
+		return viper.GetString("istio-include-outbound-ip-ranges")
 	}
 }
 
@@ -299,6 +299,6 @@ func getExcludedOutboundCidrs(pod *corev1.Pod) string {
 	if excludeCidrs, ok := pod.ObjectMeta.Labels[ExcludeCidrsAnnotation]; ok {
 		return excludeCidrs
 	} else {
-		return ""
+		return viper.GetString("istio-exclude-outbound-ip-ranges")
 	}
 }

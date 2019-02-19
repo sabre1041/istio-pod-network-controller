@@ -95,7 +95,19 @@ spec:
         {{if eq .Values.containerRuntime "crio"}}
         - '--container-runtime'
         - "{{ .Values.containerRuntime }}"
-        {{ end }}          
+        {{ end }}
+        {{- if .Values.includeIPRanges }}
+        - 'istio-include-outbound-ip-ranges'
+        - "{{ .Values.includeIPRanges }}"
+        {{- end}}
+        {{- if .Values.excludeIPRanges }}
+        - 'istio-exclude-outbound-ip-ranges'
+        - "{{ .Values.excludeIPRanges }}"
+        {{- end}}
+        {{- if .Values.excludeInboundPorts }}
+        - 'istio-exclude-inbound-ports'
+        - "{{ .Values.excludeInboundPorts }}"
+        {{- end}}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: {{ .Chart.Name }}
