@@ -10,6 +10,19 @@ containerRuntime: docker
 crioSocket: /var/run/crio/crio.sock
 runcRoot: /run/runc
 
+# istio egress capture IP whitelist
+# https://istio.io/docs/tasks/traffic-management/egress.html#calling-external-services-directly
+# example: includeIPRanges: "172.30.0.0/16,172.20.0.0/16"
+# would only capture egress traffic on those two IP Ranges, all other outbound traffic would
+# be allowed by the sidecar
+includeIPRanges: "*"
+excludeIPRanges: ""
+
+# istio ingress capture port exception list
+# examples: excludeInboundPorts: "80,8080"
+# would not capture ingress traffic on those two ports
+excludeInboundPorts: ""
+
 image:
   repository: quay.io/raffaelespazzoli/istio-pod-network-controller
   tag: latest
