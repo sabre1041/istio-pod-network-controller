@@ -1,8 +1,33 @@
+apiVersion: extensions/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: {{ .Chart.Name }}-psp
+  labels:
+    app: {{ template "istio-pod-network-controller.name" . }}
+    chart: {{ template "istio-pod-network-controller.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+  - NET_ADMIN
+  fsGroup:
+    rule: RunAsAny
+  hostPID: true
+  privileged: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+  - '*'
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}-sa
   namespace: {{ .Values.Namespace }}
   labels:
     app: {{ template "istio-pod-network-controller.name" . }}
@@ -14,12 +39,12 @@ apiVersion: v1
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}-cr
   labels:
     app: {{ template "istio-pod-network-controller.name" . }}
     chart: {{ template "istio-pod-network-controller.chart" . }}
     release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}  
+    heritage: {{ .Release.Service }}
 rules:
 - apiGroups:
   - ""
@@ -40,24 +65,32 @@ rules:
   verbs:
   - get
   - list
-  - watch  
+  - watch
+- apiGroups:
+  - extensions
+  resourceNames:
+  - istio-pod-network-controller-psp
+  resources:
+  - podsecuritypolicies
+  verbs:
+  - use
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}-crb
   labels:
     app: {{ template "istio-pod-network-controller.name" . }}
     chart: {{ template "istio-pod-network-controller.chart" . }}
     release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}  
+    heritage: {{ .Release.Service }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}-cr
 subjects:
 - kind: ServiceAccount
-  name: {{ .Chart.Name }}
+  name: {{ .Chart.Name }}-sa
   namespace: {{ .Values.Namespace }}
 ---
 apiVersion: extensions/v1beta1
@@ -82,10 +115,12 @@ spec:
         release: {{ .Release.Name }}
       name: {{ .Chart.Name }}
     spec:
+      serviceAccountName: istio-pod-network-controller-sa
+      hostPID: true
       containers:
       - env:
         - name: LOG_LEVEL
-          value: {{ .Values.LogLevel | default "info" }}        
+          value: {{ .Values.LogLevel | default "info" }}
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -122,27 +157,25 @@ spec:
         - name: crio
           mountPath: /var/run/crio/crio.sock
         - name: runc-root
-          mountPath: /run/runc          
-        {{end}}                                  
-      serviceAccountName: {{ .Chart.Name }}
-      hostPID: true
+          mountPath: /run/runc
+        {{end}}
       volumes:
-      {{if eq .Values.containerRuntime "docker"}}  
+      {{if eq .Values.containerRuntime "docker"}}
       - name: docker
-        hostPath: 
+        hostPath:
           path: /var/run/docker.sock
           type: Socket
-      {{end}} 
-      {{if eq .Values.containerRuntime "crio"}}  
+      {{end}}
+      {{if eq .Values.containerRuntime "crio"}}
       - name: crio
-        hostPath: 
+        hostPath:
           path: {{ .Values.crioSocket }}
           type: Socket
       - name: runc-root
-        hostPath: 
+        hostPath:
           path: {{ .Values.runcRoot }}
-          type: Directory          
-      {{end}}          
+          type: Directory
+      {{end}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -158,12 +191,12 @@ data:
   config: |-
     policy: enabled
     template: |-
-      
+
       initContainers:
       - name: istio-init
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        args: 
+        args:
         - init
         volumeMounts:
         - mountPath: /etc/podinfo
@@ -247,7 +280,7 @@ data:
         [[ else -]]
           requests:
             cpu: 10m
-          
+
         [[ end -]]
         volumeMounts:
         - mountPath: /etc/istio/proxy
@@ -255,14 +288,14 @@ data:
         - mountPath: /etc/certs/
           name: istio-certs
           readOnly: true
-      
+
       volumes:
       - name: podinfo
         downwardAPI:
           items:
           - path: "pod_annotations"
             fieldRef:
-              fieldPath: metadata.annotations   
+              fieldPath: metadata.annotations
       - emptyDir:
           medium: Memory
         name: istio-envoy
@@ -273,7 +306,7 @@ data:
           secretName: istio.default
           [[ else -]]
           secretName: [[ printf "istio.%s" .Spec.ServiceAccountName ]]
-          [[ end -]]     
+          [[ end -]]
 
 {{if eq .Values.kubernetesDistribution "OpenShift"}}
 ---
@@ -291,7 +324,7 @@ metadata:
   app: {{ template "istio-pod-network-controller.name" . }}
   chart: {{ template "istio-pod-network-controller.chart" . }}
   release: {{ .Release.Name }}
-  heritage: {{ .Release.Service }}  
+  heritage: {{ .Release.Service }}
 allowHostDirVolumePlugin: true
 allowHostIPC: true
 allowHostNetwork: true
@@ -324,4 +357,3 @@ users:
 volumes:
 - '*'
 {{end}}
-
