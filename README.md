@@ -1,3 +1,5 @@
+*This project has been superseded by https://github.com/istio/cni*
+
 Istio Pod Network Controller
 ========================
 
