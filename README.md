@@ -125,7 +125,7 @@ Execute the following commands:
 ```
 oc new-project bookinfo
 oc annotate namespace bookinfo istio-pod-network-controller/initialize=true
-oc adm policy add-scc-to-user anyuid -z default -n bookinfo
+oc adm policy add-scc-to-user nonroot -z default -n bookinfo
 oc apply -f <(istioctl kube-inject -f examples/bookinfo.yaml) -n bookinfo
 oc expose svc productpage -n bookinfo
 ```
